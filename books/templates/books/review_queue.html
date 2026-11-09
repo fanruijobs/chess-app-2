@@ -1,0 +1,51 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}Review · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>Review queue</h1>
+
+<p class="stats-line">
+  {% for count in counts %}
+    <a href="?book={{ count.book__slug }}" class="{% if book_filter == count.book__slug %}active{% endif %}">
+      {{ count.book__title }} ({{ count.n }})
+    </a>
+    {% if not forloop.last %} · {% endif %}
+  {% empty %}
+    Nothing to review 🎉
+  {% endfor %}
+</p>
+
+{% if puzzles %}
+<section>
+  <table>
+    <thead>
+      <tr>
+        <th>Book</th>
+        <th>Number</th>
+        <th class="num">Confidence</th>
+        <th>Position</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for puzzle in puzzles %}
+        <tr>
+          <td>{{ puzzle.book.title }}</td>
+          <td>
+            <a href="{% url 'books:puzzle_view' puzzle.pk %}">{{ puzzle.number|default:"—" }}</a>
+          </td>
+          <td class="num">{{ puzzle.confidence|floatformat:2|default:"—" }}</td>
+          <td>
+            <a href="{% url 'books:review_puzzle' puzzle.pk %}">
+              {{ puzzle.fen|truncatechars:40 }}
+            </a>
+          </td>
+          <td>{{ puzzle.extraction_notes|truncatechars:60 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

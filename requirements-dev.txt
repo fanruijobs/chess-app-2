@@ -1,0 +1,5 @@
+pytest~=8.4
+pytest-django~=4.11
+pytest-cov~=7.0
+responses~=0.25
+pypdf~=6.0

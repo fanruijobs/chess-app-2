@@ -1,0 +1,35 @@
+# Python
+.venv/
+.venv313/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Django
+db.sqlite3
+*.log
+staticfiles/
+
+# Local config
+.env
+.env.*
+!.env.example
+
+# Media (scanned pages)
+media/
+
+# User's book scans
+uploaded-books/
+
+# Real book page photos used for CV calibration tests (see books/tests/fixtures/pages/README.md)
+books/tests/fixtures/pages/*
+!books/tests/fixtures/pages/README.md
+
+# Outputs
+*.pdf
+tmp/
+sketch.txt
+
+# OS
+.DS_Store

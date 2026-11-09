@@ -1,0 +1,137 @@
+{% extends "analysis/base.html" %}
+{% load static %}
+
+{% block title %}Review #{{ puzzle.pk }} · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'books:review_queue' %}">Review</a> /
+  {{ puzzle.book.title }}{% if puzzle.diagram_index %} · diagram {{ puzzle.diagram_index }}{% endif %}
+</h1>
+
+<p class="stats-line">
+  confidence: <strong>{{ puzzle.confidence|floatformat:2|default:"—" }}</strong> ·
+  status: <span class="badge badge-{{ puzzle.status }}">{{ puzzle.get_status_display }}</span>
+  {% if puzzle.extraction_notes %} · {{ puzzle.extraction_notes }}{% endif %}
+</p>
+
+<div class="review-layout">
+  <div class="crop-pane">
+    <h2>Source scan</h2>
+    {% if has_crop %}
+      <img src="{% url 'books:diagram_crop' page.pk puzzle.diagram_index %}" alt="source diagram">
+    {% else %}
+      <p class="empty">No source crop for this puzzle.</p>
+    {% endif %}
+    {% if page %}
+      <p class="hint">page {{ page.page_number|default:page.pk }} · {{ page.source_file }}</p>
+    {% endif %}
+  </div>
+
+  <div class="edit-pane">
+    <h2>Extracted board (edit if needed)</h2>
+    <div class="palette">
+      {% for color in "wb" %}
+        {% for piece in "KQRBNP" %}
+          <button type="button" class="piece-button"
+                  data-piece='{"color": "{% if color == 'w' %}white{% else %}black{% endif %}",
+                                "role": "{% if piece == 'K' %}king{% elif piece == 'Q' %}queen{% elif piece == 'R' %}rook{% elif piece == 'B' %}bishop{% elif piece == 'N' %}knight{% else %}pawn{% endif %}"}'>
+            {{ piece }}
+          </button>
+        {% endfor %}
+      {% endfor %}
+      <button type="button" class="piece-button" data-piece="null">✕</button>
+    </div>
+    <div id="board" class="cg-wrap"></div>
+    <p class="hint">Select a piece above, then click squares to place it. Drag also works.</p>
+    <p><button id="flip-btn" type="button" class="small">Flip board</button></p>
+  </div>
+</div>
+
+<section class="card">
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="verify">
+    <input type="hidden" name="fen" id="fen-input" value="{{ puzzle.fen }}">
+    <div class="row-form">
+      <label>Book number
+        <input type="text" name="number" value="{{ puzzle.number }}" placeholder="e.g. 567">
+      </label>
+      <label>Side to move
+        <select id="turn-select">
+          <option value="w" {% if " w " in puzzle.fen %}selected{% endif %}>White</option>
+          <option value="b" {% if " b " in puzzle.fen %}selected{% endif %}>Black</option>
+        </select>
+      </label>
+      <label>FEN
+        <input type="text" name="fen" value="{{ puzzle.fen }}" style="width: 420px">
+      </label>
+      <button type="submit">Verify</button>
+    </div>
+  </form>
+  <form method="post" style="display:inline">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+    <input type="hidden" name="fen" value="{{ puzzle.fen }}">
+    <input type="hidden" name="number" value="{{ puzzle.number }}">
+    <button type="submit" class="small">Save without verifying</button>
+  </form>
+  <form method="post" style="display:inline">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="reject">
+    <button type="submit" class="small">Reject</button>
+  </form>
+  <form method="post" style="display:inline">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="rerun">
+    <button type="submit" class="small">Re-extract from page</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'books/style.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.base.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.brown.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.cburnett.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+  import { Chessground } from "{% static 'books/vendor/chessground.min.js' %}";
+
+  const cg = Chessground(document.getElementById('board'), {
+    fen: "{{ puzzle.fen }}",
+    movable: { free: true, color: 'both' },
+    draggable: { enabled: true },
+    selectable: { enabled: true },
+    orientation: 'white',
+  });
+  document.getElementById('flip-btn').addEventListener('click', () => {
+    cg.toggleOrientation();
+  });
+  const fenInput = document.getElementById('fen-input');
+  const turnSelect = document.getElementById('turn-select');
+  let selected = null;
+  document.querySelectorAll('.piece-button').forEach(button => {
+    button.addEventListener('click', () => {
+      selected = button.dataset.piece === 'null' ? null : JSON.parse(button.dataset.piece);
+      document.querySelectorAll('.piece-button').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+    });
+  });
+  function place(square) {
+    const pieces = new Map(cg.state.pieces);
+    if (selected === null) pieces.delete(square); else pieces.set(square, selected);
+    cg.setPieces(pieces);
+    syncFen();
+  }
+  function syncFen() {
+    const turn = turnSelect.value;
+    fenInput.value = cg.getFen().replace(/ [wb] /, ` ${turn} `);
+  }
+  cg.set({ events: { select: place } });
+  turnSelect.addEventListener('change', syncFen);
+  window.cg = cg;
+</script>
+{% endblock %}

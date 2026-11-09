@@ -1,0 +1,10 @@
+[run]
+omit =
+    */tests/*
+    */migrations/*
+    manage.py
+    config/*
+
+[report]
+show_missing = True
+skip_covered = True

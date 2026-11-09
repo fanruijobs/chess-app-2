@@ -1,0 +1,28 @@
+{% load formatting %}
+<article class="turning-point" id="tp-{{ tp.ply }}">
+  <h3>
+    <span class="move-number">{{ tp.move_number }}</span>
+    <span class="played-move">{{ tp.san_played }}</span>
+    <span class="arrow">instead of</span>
+    <span class="best-move">{{ tp.san_best|default:"?" }}</span>
+  </h3>
+  <p class="eval-line">
+    <span class="eval-before">{% format_eval tp.eval_before_cp tp.eval_before_mate %}</span>
+    <span class="arrow">→</span>
+    <span class="eval-after">{% format_eval tp.eval_after_cp tp.eval_after_mate %}</span>
+    <span class="drop">({{ tp.drop_cp }} cp drop)</span>
+  </p>
+  <p><span class="badge badge-classification">{{ tp.get_classification_display }}</span></p>
+  <p class="rule-text">{{ tp.rule_text }}</p>
+  {% if tp.llm_text %}
+    <div class="llm-text">{{ tp.llm_text|linebreaks }}</div>
+  {% elif tp.llm_status == "failed" %}
+    <p class="llm-error">Explanation failed: {{ tp.llm_error|truncatechars:120 }}</p>
+  {% endif %}
+  <form method="post" action="{% url 'analysis:tp_llm' tp.game.uuid tp.pk %}">
+    {% csrf_token %}
+    <button type="submit" class="small">
+      {% if tp.llm_text %}Regenerate explanation{% else %}Generate explanation (DeepSeek){% endif %}
+    </button>
+  </form>
+</article>

@@ -1,0 +1,73 @@
+{% extends "analysis/base.html" %}
+{% load static %}
+
+{% block title %}Puzzle #{{ puzzle.number|default:puzzle.pk }} · Chess Trainer{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'books/style.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'books:book_detail' puzzle.book.slug %}">{{ puzzle.book.title }}</a> /
+  #{{ puzzle.number|default:puzzle.pk }}
+</h1>
+
+<p>
+  <a class="button" href="{% url 'books:book_detail' puzzle.book.slug %}">← Back to book</a>
+  {% if prev_puzzle %}
+    <a class="button" href="{% url 'books:puzzle_view' prev_puzzle.pk %}"
+       title="previous puzzle of this book">← #{{ prev_puzzle.number|default:prev_puzzle.pk }}</a>
+  {% endif %}
+  {% if next_puzzle %}
+    <a class="button" href="{% url 'books:puzzle_view' next_puzzle.pk %}"
+       title="next puzzle of this book">#{{ next_puzzle.number|default:next_puzzle.pk }} →</a>
+  {% endif %}
+  {% if page %} · page {{ page.page_number|default:page.pk }}{% endif %}
+</p>
+
+{% if puzzle.number %}
+<p class="puzzle-number-banner">#{{ puzzle.number }}</p>
+{% endif %}
+
+<p class="stats-line">
+  status: <span class="badge badge-{{ puzzle.status }}">{{ puzzle.get_status_display }}</span> ·
+  {% if page %}page {{ page.page_number|default:page.pk }}{% endif %} ·
+  <a href="{% url 'books:review_puzzle' puzzle.pk %}">Edit in review</a>
+</p>
+
+<div class="trainer-layout">
+  <div>
+    <div class="board-svg">
+      {{ board_svg|safe }}
+    </div>
+    <p class="row-form">
+      <a class="button" href="?{% if flipped %}{% else %}flip=1{% endif %}">
+        Flip board ({% if flipped %}a1{% else %}h8{% endif %} bottom-left)
+      </a>
+    </p>
+    <form method="post" action="{% url 'books:puzzle_view' puzzle.pk %}" class="row-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="toggle_turn">
+      <button class="button" type="submit"
+              title="Flips the side to move in the stored FEN and saves it.">
+        {% if " w " in display_fen %}White{% else %}Black{% endif %} to move ⇄ switch (saves)
+      </button>
+    </form>
+    <form method="post" action="{% url 'books:puzzle_view' puzzle.pk %}" class="row-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="rotate">
+      <button class="button" type="submit"
+              title="When the scan shows white at the bottom but the position was stored flipped: rotates the FEN 180° and saves it. Clicking again reverts.">
+        Fix orientation: rotate notation 180° (saves)
+      </button>
+    </form>
+    <p class="hint">Current: {% if " w " in display_fen %}white{% else %}black{% endif %} to move ·
+      {% if flipped %}h8{% else %}a1{% endif %} at the bottom-left</p>
+  </div>
+  <div>
+    <p class="hint">FEN: <code>{{ display_fen }}</code></p>
+    <p class="hint">attempts {{ puzzle.attempts }} · solved {{ puzzle.solved }} · failed {{ puzzle.failed }}</p>
+  </div>
+</div>
+{% endblock %}

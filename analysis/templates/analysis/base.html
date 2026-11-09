@@ -1,0 +1,45 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Chess Trainer{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'analysis/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="{% url 'analysis:players_list' %}">Chess Trainer</a>
+  <nav>
+    <a href="{% url 'analysis:players_list' %}">Players</a>
+    <a href="{% url 'analysis:analysis_board' %}">Analysis</a>
+    <a href="{% url 'books:index' %}">Books</a>
+    <a href="{% url 'training:set_list' %}">Train</a>
+    <a href="{% url 'training:rework_list' %}">Re-work</a>
+    <a href="{% url 'books:review_queue' %}">Review</a>
+    <a href="{% url 'books:bad_fens' %}">Bad FENs</a>
+    <a href="/admin/">Admin</a>
+    {% if user.is_authenticated %}
+      <span class="nav-user">{{ user.username }}</span>
+      <a href="{% url 'password_change' %}">Password</a>
+      {# LogoutView only accepts POST (GET is a 405), so this must be a form. #}
+      <form method="post" action="{% url 'logout' %}" class="logout-form">
+        {% csrf_token %}
+        <button type="submit" class="nav-logout">Log out</button>
+      </form>
+    {% endif %}
+  </nav>
+</header>
+<main>
+{% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li class="message message-{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% block content %}{% endblock %}
+</main>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

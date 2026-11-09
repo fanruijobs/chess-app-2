@@ -1,0 +1,25 @@
+[Unit]
+Description=chess-app (gunicorn)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/chess-app
+Environment=DJANGO_SETTINGS_MODULE=config.settings_deploy
+Environment=PYTHONUNBUFFERED=1
+
+# Loopback only — nginx is the sole public entry point (port 8888).
+ExecStart=/home/ubuntu/chess-app/.venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    --error-logfile - \
+    config.wsgi:application
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

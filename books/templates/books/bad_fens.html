@@ -1,0 +1,48 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}Bad FENs · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'books:index' %}">Books</a> / Bad FENs
+</h1>
+
+<p class="stats-line">
+  <span class="badge badge-rejected">{{ bad|length }} illegal position{{ bad|length|pluralize }}</span>
+  {% if book_filter %}in <strong>{{ book_filter }}</strong>{% endif %}
+</p>
+
+<p class="filter-row">
+  Books:
+  <a href="{% url 'books:bad_fens' %}"
+     {% if not book_filter %}class="button"{% endif %}>All</a>
+  {% for book in books %}
+    <a href="?book={{ book.slug }}"
+       {% if book_filter == book.slug %}class="button"{% endif %}>{{ book.title }}</a>
+  {% endfor %}
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th><th>Book</th><th>Puzzle</th><th>Page</th>
+      <th>FEN</th><th>Problems</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for puzzle, fen, reasons in bad %}
+      <tr>
+        <td class="num">{{ forloop.counter }}</td>
+        <td><a href="{% url 'books:book_detail' puzzle.book.slug %}">{{ puzzle.book.title }}</a></td>
+        <td>{{ puzzle.number|default:puzzle.pk }}</td>
+        <td class="num">{{ puzzle.page.page_number|default:"—" }}</td>
+        <td><code>{{ fen }}</code></td>
+        <td>{{ reasons|join:"; " }}</td>
+        <td><a class="button" href="{% url 'books:review_puzzle' puzzle.pk %}">Edit</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="hint">No illegal FENs.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

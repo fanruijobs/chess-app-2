@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ book.title }} page {{ page.page_number }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 10mm;
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #898781;
+    }
+  }
+  body { font: 9pt/1.3 system-ui, -apple-system, sans-serif; color: #0b0b0b; margin: 0; }
+
+  .page { break-after: page; }
+  .page:last-child { break-after: auto; }
+
+  /* designated, compact title zone on every page */
+  .page-head {
+    border-bottom: 0.4pt solid #d6d5d1;
+    padding-bottom: 1.5mm;
+    margin-bottom: 3mm;
+  }
+  .page-head h1 { font-size: 10.5pt; font-weight: 600; margin: 0; }
+  .page-head .meta { font-size: 8pt; color: #52514e; margin: 0.5mm 0 0; }
+
+  /* 6 puzzles per page: 2 columns x 3 identical rows */
+  .rows { display: flex; flex-direction: column; height: 258mm; }
+  .row { flex: 1; display: flex; }
+  .cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    break-inside: avoid;
+  }
+  .cell h2 { font-size: 10pt; font-weight: 600; margin: 0 0 1.5mm; }
+  .cell .board svg { width: 62mm; height: 62mm; }
+</style>
+</head>
+<body>
+{% for pdf_page in pages %}
+  <div class="page">
+    <div class="page-head">
+      <h1>{{ book.title }} — page {{ page.page_number }}</h1>
+      <p class="meta">{{ pdf_page.count }} puzzle{{ pdf_page.count|pluralize }}</p>
+    </div>
+    <div class="rows">
+      {% for row in pdf_page.rows %}
+        <div class="row">
+          {% for item in row %}
+            <div class="cell">
+              <h2>#{{ item.puzzle.number|default:"?" }}{{ item.side_mark }}</h2>
+              <div class="board">{{ item.board_svg|safe }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endfor %}
+</body>
+</html>

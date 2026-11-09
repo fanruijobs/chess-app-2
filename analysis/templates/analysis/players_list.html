@@ -1,0 +1,59 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}Players · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>Players</h1>
+
+{% if worker.alive %}
+  <p class="queue-status"><span class="worker-alive">● worker running{% if worker.heartbeat.pid %} (pid {{ worker.heartbeat.pid }}){% endif %}</span></p>
+{% else %}
+  <p class="queue-status"><span class="worker-dead">● worker offline — start it with <code>.venv/bin/python manage.py analyze_worker</code></span></p>
+{% endif %}
+
+<section class="card">
+  <h2>Fetch games from chess.com</h2>
+  <form method="post" action="{% url 'analysis:players_fetch' %}" class="row-form">
+    {% csrf_token %}
+    <label>Username
+      <input type="text" name="username" required placeholder="magnuscarlsen">
+    </label>
+    <label>Months
+      <input type="number" name="months" value="3" min="1" max="24" class="narrow">
+    </label>
+    <label>Limit
+      <input type="number" name="limit" value="" min="1" placeholder="all" class="narrow">
+    </label>
+    <button type="submit">Fetch</button>
+  </form>
+  <p class="hint">Fetches from the chess.com public API. Batch analysis belongs in the
+    CLI: <code>manage.py fetch_games &lt;username&gt; --months 3</code></p>
+</section>
+
+<section>
+  <table>
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th class="num">Games</th>
+        <th class="num">Turning points</th>
+        <th class="num">Queued</th>
+        <th>Last synced</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for player in players %}
+        <tr>
+          <td><a href="{% url 'analysis:players_detail' player.username %}">{{ player.username }}</a></td>
+          <td class="num">{{ player.game_count }}</td>
+          <td class="num">{{ player.turning_point_count }}</td>
+          <td class="num">{{ player.queued_count }}</td>
+          <td>{{ player.last_synced_at|date:"Y-m-d H:i"|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="empty">No players yet — fetch a chess.com username above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

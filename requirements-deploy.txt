@@ -1,0 +1,7 @@
+# Extra dependencies for the EC2 deployment (see config/settings_deploy.py).
+# Local development uses SQLite and the Django dev server, so none of these
+# are needed in requirements.txt.
+-r requirements.txt
+
+psycopg[binary]~=3.2   # Django's postgresql backend
+gunicorn~=23.0         # WSGI server, run under systemd

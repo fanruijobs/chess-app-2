@@ -1,0 +1,72 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}Re-work · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'training:set_list' %}">Training sets</a> / Re-work
+</h1>
+
+<p class="stats-line">
+  <span class="badge badge-rejected">{{ items|length }} re-work position{{ items|length|pluralize }}</span>
+  {% if selected_set %}in set <strong>{{ selected_set.name }}</strong>{% endif %}
+  {% if selected_book %}from <strong>{{ selected_book.title }}</strong>{% endif %}
+</p>
+
+<form method="get" class="filter-row">
+  <label>Training set:
+    <select name="set">
+      <option value="">— all sets —</option>
+      {% for training_set in sets %}
+        <option value="{{ training_set.pk }}"
+                {% if selected_set.pk == training_set.pk %}selected{% endif %}>
+          {{ training_set.name }} ({{ training_set.rework }})
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Book:
+    <select name="book">
+      <option value="">— all books —</option>
+      {% for book in books %}
+        <option value="{{ book.slug }}"
+                {% if selected_book.pk == book.pk %}selected{% endif %}>
+          {{ book.title }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <button class="button" type="submit">Filter</button>
+  {% if selected_set or selected_book %}
+    <a class="button" href="{% url 'training:rework_list' %}">Clear</a>
+  {% endif %}
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th><th>Set</th><th>Position</th><th>Book</th>
+      <th>Best move</th><th class="num">Attempts</th><th>Last trained</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+      <tr>
+        <td class="num">{{ forloop.counter }}</td>
+        <td><a href="{% url 'training:set_detail' item.training_set_id %}">{{ item.training_set.name }}</a></td>
+        <td><a href="{% url 'training:item_session' item.training_set_id item.pk %}?status=rework">{{ item.label|default:item.pk }}</a></td>
+        <td>
+          {% if item.puzzle %}
+            <a href="{% url 'books:book_detail' item.puzzle.book.slug %}">{{ item.puzzle.book.title }}</a>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ item.san_best }}</td>
+        <td class="num">{{ item.attempts }}</td>
+        <td>{{ item.last_trained_at|date:"Y-m-d H:i"|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="hint">No re-work positions yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

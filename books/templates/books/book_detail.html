@@ -1,0 +1,128 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}{{ book.title }} · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1><a href="{% url 'books:index' %}">Books</a> / {{ book.title }}</h1>
+
+<p class="stats-line">
+  <strong>{{ stats.total }}</strong> puzzles ·
+  <strong>{{ stats.verified }}</strong> verified ·
+  <strong>{{ stats.review }}</strong> need review ·
+  <strong>{{ stats.solved }}</strong> solved at least once
+</p>
+
+<p class="stats-line">
+  Calibration:
+  <span class="badge badge-{{ book.calibration_status }}">{{ book.get_calibration_status_display }}</span>
+</p>
+
+{% if puzzles %}
+<section>
+  <h2>
+    Puzzles
+    {% if selected_page %}
+      on page {{ selected_page.page_number }}
+      ({{ puzzles.paginator.count }})
+    {% else %}
+      ({{ puzzles.paginator.count }})
+    {% endif %}
+  </h2>
+
+  {% if selected_page %}
+  <p class="row-form">
+    <a class="button" href="{% url 'books:book_page_pdf' book.slug selected_page.page_number %}">
+      Download page {{ selected_page.page_number }} as PDF
+    </a>
+    <a href="{% url 'books:book_detail' book.slug %}">Show all puzzles</a>
+  </p>
+  {% endif %}
+
+  <p class="filter-row">
+    {% if puzzles.has_previous %}
+      <a href="?p={{ puzzles.previous_page_number }}{% if page_filter %}&page={{ page_filter }}{% endif %}">← previous</a>
+    {% endif %}
+    page {{ puzzles.number }} of {{ puzzles.paginator.num_pages }}
+    {% if puzzles.has_next %}
+      <a href="?p={{ puzzles.next_page_number }}{% if page_filter %}&page={{ page_filter }}{% endif %}">next →</a>
+    {% endif %}
+  </p>
+  <p class="filter-row">
+    <form method="get" class="nav-form">
+      Puzzle #
+      <input type="text" name="goto" size="9" placeholder="{% if slots_numbering %}p007-03{% else %}1234{% endif %}" aria-label="Puzzle number">
+      <button class="button" type="submit">Go</button>
+    </form>
+    {% if slots_numbering %}
+    {# steps books: the page box jumps to the SCANNED page (pdf page) #}
+    <form method="get" class="nav-form">
+      Page
+      <input type="number" name="page" min="1" value="{{ page_filter }}" aria-label="Scanned page number">
+      <button class="button" type="submit">Go</button>
+    </form>
+    {% else %}
+    <form method="get" class="nav-form">
+      Page
+      <input type="number" name="p" min="1" max="{{ puzzles.paginator.num_pages }}" value="{{ puzzles.number }}" aria-label="Pagination page">
+      <button class="button" type="submit">Go</button>
+      {% if page_filter %}<input type="hidden" name="page" value="{{ page_filter }}">{% endif %}
+    </form>
+    {% endif %}
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Number</th>
+        <th>Status</th>
+        <th class="num">Confidence</th>
+        <th class="num">Attempts</th>
+        <th class="num">Solved</th>
+        <th class="num">Failed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for puzzle in puzzles %}
+        <tr>
+          <td>
+            <a href="{% url 'books:puzzle_view' puzzle.pk %}">{{ puzzle.number|default:"—" }}</a>
+          </td>
+          <td><span class="badge badge-{{ puzzle.status }}">{{ puzzle.get_status_display }}</span></td>
+          <td class="num">{{ puzzle.confidence|floatformat:2|default:"—" }}</td>
+          <td class="num">{{ puzzle.attempts }}</td>
+          <td class="num">{{ puzzle.solved }}</td>
+          <td class="num">{{ puzzle.failed }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if pages %}
+<section>
+  <h2>Pages ({{ pages|length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Page</th>
+        <th>Source</th>
+        <th>Status</th>
+        <th>Extracted</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for page in pages %}
+        <tr>
+          <td>
+            <a href="?page={{ page.page_number }}">{{ page.page_number|default:"—" }}</a>
+          </td>
+          <td>{{ page.source_file|default:"uploaded image" }}</td>
+          <td>{{ page.get_status_display }}</td>
+          <td>{{ page.extracted_at|date:"Y-m-d H:i"|default:"—" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}Books · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>Puzzle books</h1>
+
+<section>
+  <table>
+    <thead>
+      <tr>
+        <th>Book</th>
+        <th>Calibration</th>
+        <th class="num">Puzzles</th>
+        <th class="num">Verified</th>
+        <th class="num">Needs review</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for book in books %}
+        <tr>
+          <td><a href="{% url 'books:book_detail' book.slug %}">{{ book.title }}</a></td>
+          <td>
+            <span class="badge badge-{{ book.calibration_status }}">{{ book.get_calibration_status_display }}</span>
+          </td>
+          <td class="num">{{ book.puzzle_count }}</td>
+          <td class="num">{{ book.verified_count }}</td>
+          <td class="num">{{ book.review_count }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="empty">
+          No books yet — create one in the <a href="/admin/books/book/add/">admin</a>,
+          then calibrate it with a page photo.
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

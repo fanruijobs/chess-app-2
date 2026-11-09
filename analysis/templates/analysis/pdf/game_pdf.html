@@ -1,0 +1,175 @@
+{% load formatting %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Turning points report</title>
+<style>
+  @page {
+    size: A4;
+    margin: 12mm 10mm;
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #898781;
+    }
+  }
+  body {
+    font: 9pt/1.35 system-ui, -apple-system, sans-serif;
+    color: #0b0b0b;
+  }
+
+  .game { break-before: page; }
+  .game:first-child { break-before: auto; }
+
+  h1 { font-size: 13pt; margin: 0 0 1mm; }
+  .meta { color: #52514e; margin: 0 0 4mm; font-size: 9pt; }
+  .result-win { color: #0ca30c; font-weight: 700; }
+  .result-loss { color: #d03b3b; font-weight: 700; }
+  .result-draw { color: #898781; font-weight: 700; }
+
+  /* 2 columns x 3 rows per A4 page; min-height keeps the grid uniform even
+     when a cell has little text (end/none modes) */
+  .grid { overflow: hidden; } /* clearfix for the floats */
+  .tp {
+    float: left;
+    width: 49%;
+    min-height: 76mm;
+    margin: 0 1% 2mm 0;
+    font-size: 8.5pt;
+    break-inside: avoid;
+  }
+
+  .tp h2 {
+    font-size: 9pt;
+    margin: 0 0 0.5mm;
+    break-after: avoid;
+  }
+  .tp h2 .played { color: #d03b3b; text-decoration: line-through; font-family: ui-monospace, Menlo, monospace; }
+  .tp h2 .best { color: #0ca30c; font-family: ui-monospace, Menlo, monospace; }
+  .tp h2 .masked-note { color: #898781; font-weight: 400; }
+
+  .evals {
+    margin: 0 0 0.5mm;
+    font-size: 8.5pt;
+    font-variant-numeric: tabular-nums;
+  }
+  .evals .after { color: #d03b3b; font-weight: 700; }
+  .evals .drop { color: #898781; margin-left: 2mm; font-size: 7.5pt; }
+
+  .board { margin: 0 0 0.5mm; }
+  .board svg { width: 49mm; height: auto; }
+  /* larger diagrams in end/none modes (no inline text to fit) */
+  .board.large svg { width: 65mm; height: auto; }
+
+  .badge {
+    display: inline;
+    border: 1px solid #c3c2b7;
+    border-radius: 1.5mm;
+    padding: 0.2mm 1.5mm;
+    font-size: 7pt;
+    font-weight: 600;
+    color: #52514e;
+    margin-right: 1.5mm;
+    white-space: nowrap;
+  }
+  .rule { color: #52514e; margin: 0 0 1mm; font-size: 8pt; line-height: 1.25; }
+  .llm {
+    border: 1px solid #c3c2b7;
+    border-radius: 1.5mm;
+    padding: 1mm 2mm;
+    background: #f9f9f7;
+    font-size: 7.5pt;
+    line-height: 1.25;
+  }
+  .none { color: #898781; font-style: italic; }
+
+  /* answer key (end mode) — one section after ALL games */
+  .answers { break-before: page; }
+  .answers h2 { font-size: 12pt; }
+  .answers h3 { font-size: 10.5pt; margin: 6mm 0 2mm; break-after: avoid; }
+  .answer { margin: 0 0 4mm; break-inside: avoid; }
+  .answer .best { color: #0ca30c; font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
+  .answer .played { color: #d03b3b; font-family: ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+{% for section in sections %}
+<div class="game">
+  <h1>{{ section.game.white_username }} vs {{ section.game.black_username }}</h1>
+  <p class="meta">
+    {{ section.game.end_time|date:"Y-m-d" }} ·
+    <span class="result-{{ section.game.result }}">{{ section.game.get_result_display|upper }}</span> ·
+    {{ section.game.time_class|default:"?" }} ·
+    you played {{ section.game.player_side|upper }} ·
+    {{ section.cells|length }} turning point{{ section.cells|length|pluralize }}
+    {% if answers_mode == "end" %}· answers at the end of the document{% endif %}
+  </p>
+
+  <div class="grid">
+  {% for item in section.cells %}
+    <div class="tp">
+      <h2>
+        {{ item.tp.move_number }}
+        <span class="played">{{ item.tp.san_played }}</span>
+        {% if answers_mode == "inline" %}
+          instead of
+          <span class="best">{{ item.tp.san_best|default:"?" }}</span>
+        {% elif answers_mode == "end" %}
+          <span class="masked-note">— what should you have played?</span>
+        {% endif %}
+      </h2>
+      {% if answers_mode == "inline" %}
+      <p class="evals">
+        {{ item.eval_before_text }} →
+        <span class="after">{{ item.eval_after_text }}</span>
+        <span class="drop">({{ item.tp.drop_cp }} cp drop)</span>
+      </p>
+      {% endif %}
+      <div class="board{% if answers_mode != 'inline' %} large{% endif %}">{{ item.board_svg|safe }}</div>
+      {% if answers_mode == "inline" %}
+      <p class="rule">
+        <span class="badge">{{ item.tp.get_classification_display }}</span>
+        {{ item.rule_text }}
+      </p>
+      {% if item.llm_summary %}
+      <div class="llm">{{ item.llm_summary }}</div>
+      {% endif %}
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="none">No turning points at the analyzed threshold — clean game.</p>
+  {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% if answers_mode == "end" %}
+<div class="answers">
+  <h2>Answer key</h2>
+  {% for section in sections %}
+    {% if section.answers %}
+    <h3>{{ section.game.white_username }} vs {{ section.game.black_username }} ·
+        {{ section.game.end_time|date:"Y-m-d" }}</h3>
+    {% for item in section.answers %}
+    <div class="answer">
+      <p>
+        <strong>{{ forloop.counter }}.</strong>
+        {{ item.tp.move_number }}
+        <span class="played">{{ item.tp.san_played }}</span>
+        → best was
+        <span class="best">{{ item.tp.san_best|default:"?" }}</span>
+        · {{ item.eval_before_text }} → {{ item.eval_after_text }}
+        ({{ item.tp.drop_cp }} cp) · {{ item.tp.get_classification_display }}
+      </p>
+      <p class="rule">{{ item.tp.rule_text }}</p>
+      {% if item.tp.llm_text %}
+      <div class="llm">{{ item.tp.llm_text|linebreaks }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,8 @@
+Django~=6.1.0
+chess==1.11.2
+requests~=2.32
+openai~=3.1
+weasyprint~=69.0
+numpy>=2.4,<3
+opencv-python-headless>=4.12
+pymupdf>=1.28

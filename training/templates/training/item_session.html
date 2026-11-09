@@ -1,0 +1,696 @@
+{% extends "analysis/base.html" %}
+{% load static %}
+
+{% block title %}{{ item.label|default:item.pk }} · {{ training_set.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'books/style.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.base.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.brown.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.cburnett.css' %}">
+<link rel="stylesheet" href="{% static 'books/palette.css' %}">
+<style>
+  /* the board needs an explicit square size — chessground measures its
+     container, which otherwise collapses (pieces render as stray letters) */
+  #board.cg-wrap { width: min(480px, 92vw); height: min(480px, 92vw); }
+
+  /* chess.com default board colors: ivory light squares, green dark
+     squares — matching the puzzle-page board style */
+  #board.cg-wrap cg-board {
+    background-color: #ebecd0;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOng9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiCiAgICAgdmlld0JveD0iMCAwIDggOCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPGcgaWQ9ImEiPgogIDxnIGlkPSJiIj4KICAgIDxnIGlkPSJjIj4KICAgICAgPGcgaWQ9ImQiPgogICAgICAgIDxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGlkPSJlIiBvcGFjaXR5PSIwIi8+CiAgICAgICAgPHVzZSB4PSIxIiB5PSIxIiBocmVmPSIjZSIgeDpocmVmPSIjZSIvPgogICAgICAgIDxyZWN0IHk9IjEiIHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGlkPSJmIiBmaWxsPSIjNzM5NTUyIi8+CiAgICAgICAgPHVzZSB4PSIxIiB5PSItMSIgaHJlZj0iI2YiIHg6aHJlZj0iI2YiLz4KICAgICAgPC9nPgogICAgICA8dXNlIHg9IjIiIGhyZWY9IiNkIiB4OmhyZWY9IiNkIi8+CiAgICA8L2c+CiAgICA8dXNlIHg9IjQiIGhyZWY9IiNjIiB4OmhyZWY9IiNjIi8+CiAgPC9nPgogIDx1c2UgeT0iMiIgaHJlZj0iI2IiIHg6aHJlZj0iI2IiLz4KPC9nPgo8dXNlIHk9IjQiIGhyZWY9IiNhIiB4OmhyZWY9IiNhIi8+Cjwvc3ZnPg==');
+  }
+
+  /* coordinates (the notation): small and inside the board bounds —
+     the vendor offsets push the strips past the wrap edges */
+  #board.cg-wrap coords { font-size: 10px; font-weight: 600; }
+  #board.cg-wrap coords.ranks { top: 0; }
+  #board.cg-wrap coords.files { bottom: 0; }
+  #board.cg-wrap .orientation-white .ranks :nth-child(odd),
+  #board.cg-wrap .orientation-white .files :nth-child(even),
+  #board.cg-wrap .orientation-black .ranks :nth-child(even),
+  #board.cg-wrap .orientation-black .files :nth-child(odd),
+  #board.cg-wrap coords.squares:nth-of-type(odd) :nth-child(even),
+  #board.cg-wrap coords.squares:nth-of-type(even) :nth-child(odd) {
+    color: #26221c;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  #board.cg-wrap .orientation-white .ranks :nth-child(even),
+  #board.cg-wrap .orientation-white .files :nth-child(odd),
+  #board.cg-wrap .orientation-black .ranks :nth-child(odd),
+  #board.cg-wrap .orientation-black .files :nth-child(even),
+  #board.cg-wrap coords.squares:nth-of-type(odd) :nth-child(odd),
+  #board.cg-wrap coords.squares:nth-of-type(even) :nth-child(even) {
+    color: #fdf6e3;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  }
+
+  .palette button {
+    font-size: 22px;
+    width: 36px;
+    height: 36px;
+    margin: 2px;
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .palette button.armed { outline: 2px solid #208530; }
+  .palette button.erase { color: #b33; }
+  .trainer-status.saved { color: #1a7f37; }
+
+  /* analysis toggle: blue when off, green while the engine lines are shown */
+  #analysis-switch.on { background: var(--good); border-color: var(--good); }
+
+  /* whose move it is — colored dot + label in the stats line */
+  .turn-indicator { font-weight: 600; }
+  .turn-indicator .dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 4px;
+    border: 1px solid #26221c;
+    vertical-align: middle;
+  }
+  .turn-indicator .dot.white { background: #fff; }
+  .turn-indicator .dot.black { background: #26221c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'training:set_list' %}">Training sets</a> /
+  <a href="{% url 'training:set_detail' training_set.pk %}">{{ training_set.name }}</a> /
+  {{ item.label|default:item.pk }}
+</h1>
+
+<p class="stats-line">
+  <span class="turn-indicator" id="turn-indicator"></span> ·
+  status: <span class="badge badge-{{ item.status }}" id="item-status">{{ item.get_status_display }}</span> ·
+  attempts {{ item.attempts }} ·
+  {% if item.san_best %}best move: {{ item.san_best }}{% endif %}
+</p>
+
+<div class="trainer-layout">
+  <div>
+    <div id="board" class="cg-wrap"></div>
+    <p class="row-form">
+      <button class="button" type="button" id="flip-btn">⇅ Flip board</button>
+      <button class="button" type="button" id="rotate-btn"
+              title="rotate the stored position 180° (a1 ↔ h8) — for scans read from the wrong side. Saves to the database.">⟲ Fix orientation</button>
+      <button class="button" type="button" id="turn-btn"
+              title="switch which side is to move. Saves to the database.">⚫⇄⚪ Switch side to move</button>
+      <button class="button" type="button" id="edit-btn"
+              title="repair an ill-scanned board: place/remove pieces, then save. Also updates the source puzzle.">✏️ Edit position</button>
+    </p>
+    <div id="editor" hidden>
+      <p class="hint">Pick a piece (or the ✕ eraser), then click squares on
+        the board to place or remove it. Saving also fixes the source
+        puzzle in the book.</p>
+      <p class="row-form palette" id="palette"></p>
+      <p class="row-form">
+        <input id="fen-input" size="72" spellcheck="false">
+        <button class="button" type="button" id="fen-apply">Apply FEN</button>
+      </p>
+      <p class="row-form">
+        <button class="button" type="button" id="edit-save">💾 Save position</button>
+        <button class="button" type="button" id="edit-cancel">Cancel</button>
+      </p>
+    </div>
+    <p class="row-form">
+      <button class="button" type="button" id="analysis-switch"
+              title="show/hide the Stockfish lines">Analysis</button>
+      <button class="button" type="button" id="analyze-btn">Re-analyze</button>
+      <button class="button" type="button" id="reset-btn">Reset board</button>
+      <a class="button" id="chesscom-btn" target="_blank" rel="noopener"
+         title="open the current position on chess.com's analysis board">Open in Chess.com</a>
+    </p>
+  </div>
+  <div>
+    <div id="lines"></div>
+    <div id="error" class="trainer-status wrong" hidden></div>
+    <p class="row-form">
+      <button class="button" type="button" id="pass-btn">✓ Pass</button>
+      <button class="button" type="button" id="rework-btn">↻ Re-work</button>
+    </p>
+    <p class="hint">
+      <a href="{% url 'training:set_detail' training_set.pk %}">← Back to set</a>
+    </p>
+  </div>
+</div>
+
+{{ item.fen|json_script:"item-fen" }}
+{{ category|json_script:"item-category" }}
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+import { Chessground } from "{% static 'books/vendor/chessground.min.js' %}";
+import { Chess } from "{% static 'books/vendor/chess.js' %}";
+import { askPromotion, needsPromotion } from "{% static 'books/promotion.js' %}";
+
+const itemFen = JSON.parse(document.getElementById("item-fen").textContent);
+const category = JSON.parse(document.getElementById("item-category").textContent);
+
+// this page has no <form>, so the CSRF token comes from the cookie
+function getCookie(name) {
+  if (!document.cookie) return "";
+  for (const item of document.cookie.split(";")) {
+    const pair = item.trim();
+    if (pair.startsWith(name + "=")) {
+      return decodeURIComponent(pair.substring(name.length + 1));
+    }
+  }
+  return "";
+}
+const csrf = getCookie("csrftoken");
+const actionUrl = "{% url 'training:item_action' training_set.pk item.pk %}";
+const markUrl = "{% url 'training:item_mark' training_set.pk item.pk %}";
+const backUrl = "{% url 'training:set_detail' training_set.pk %}";
+
+// chess.js owns the position — legal move generation and validation.
+// Book-snapshot FENs can be invalid (e.g. OCR positions missing a king) —
+// chess.js throws on those, so construction is guarded: the board still
+// renders, moves/analysis are just unavailable for that snapshot.
+function safeChess(fen) {
+  try {
+    return new Chess(fen);
+  } catch (error) {
+    console.error("[training] invalid FEN (moves disabled):",
+                  error.message, fen);
+    return null;
+  }
+}
+
+let savedFen = itemFen;      // last position saved to the DB
+let chess = safeChess(itemFen);
+let currentFenStr = itemFen; // the FEN string to render/analyze
+
+function updateTurnIndicator() {
+  // side to move from the current FEN; missing/invalid turn defaults to white
+  const turn = currentFenStr.trim().split(/\s+/)[1] === "b" ? "b" : "w";
+  const indicator = document.getElementById("turn-indicator");
+  indicator.textContent = "";
+  const dot = document.createElement("span");
+  dot.className = "dot " + (turn === "b" ? "black" : "white");
+  indicator.appendChild(dot);
+  indicator.appendChild(
+    document.createTextNode(turn === "b" ? "Black to move" : "White to move")
+  );
+}
+updateTurnIndicator();
+
+function updateChessComLink() {
+  // chess.com's analysis board loads a position from ?fen=<url-encoded fen>
+  document.getElementById("chesscom-btn").href =
+    "https://www.chess.com/analysis?fen=" + encodeURIComponent(currentFenStr.trim());
+}
+updateChessComLink();
+
+function computeDests() {
+  // chessground expects a Map<square, square[]>
+  const dests = new Map();
+  if (!chess) return dests;
+  for (const move of chess.moves({verbose: true})) {
+    const entry = dests.get(move.from);
+    if (entry) entry.push(move.to);
+    else dests.set(move.from, [move.to]);
+  }
+  return dests;
+}
+
+// only legal moves are movable: chessground restricts itself to `dests`
+// NOTE: this chessground build fires `after` under movable.events — not
+// the top-level events object
+async function onMove(orig, dest, meta) {
+  if (editing) {
+    // free piece movement on the editing board (ill-scanned repair):
+    // dragging a board piece relocates it in the edit cells
+    const from = squareIndex(orig), to = squareIndex(dest);
+    if (from >= 0 && from < 64 && to >= 0 && to < 64) {
+      editCells[to] = editCells[from];
+      editCells[from] = null;
+      syncEditBoard();
+    }
+    return;
+  }
+  if (!chess) return;
+  let promotion = meta?.promotion;
+  if (!promotion && needsPromotion(chess, orig, dest)) {
+    // chessground has already drawn the pawn on the last rank — ask which
+    // piece before applying the move to chess.js
+    const color = chess.get(orig).color === "b" ? "black" : "white";
+    promotion = await askPromotion(color, document.getElementById("board"),
+                                   dest, cg.state.orientation);
+    if (!promotion) {
+      cg.set({fen: chess.fen()});  // dismissed: put the pawn back
+      refreshDests();
+      return;
+    }
+  }
+  let applied = null;
+  try {
+    applied = chess.move({from: orig, to: dest, promotion: promotion || undefined});
+  } catch (firstError) {
+    try {
+      // fallback for a rejected promotion: auto-queen
+      applied = chess.move({from: orig, to: dest, promotion: "q"});
+    } catch (secondError) {
+      console.error(`[training] move ${orig}-${dest} rejected:`,
+                    firstError.message, "/", secondError.message);
+    }
+  }
+  currentFenStr = chess.fen();
+  // chessground left the pawn on the last rank — redraw it as the new piece
+  if (applied?.promotion) cg.set({fen: currentFenStr});
+  updateTurnIndicator();
+  updateChessComLink();
+  refreshDests();
+  if (analysisOn) {
+    // analyze the NEW position (chess.js already applied the move)
+    console.log("[training] move applied — analyzing", currentFenStr);
+    scheduleAnalysis();
+  }
+}
+
+// ---------------- position editor (repair ill-scanned boards) ----------------
+
+// The editor works on the raw FEN board cells (not chess.js) so even
+// broken OCR positions (e.g. missing a king) can be repaired.
+const PIECES = ["K", "Q", "R", "B", "N", "P", "k", "q", "r", "b", "n", "p"];
+
+let editing = false;
+let armed = null;      // piece letter | "erase" | null
+let editCells = null;  // 64 letters/null, rank 8 first
+
+function parseFenCells(fen) {
+  const ranks = fen.trim().split(/\s+/)[0].split("/");
+  if (ranks.length !== 8) return null;
+  const cells = new Array(64).fill(null);
+  for (let r = 0; r < 8; r++) {
+    let col = 0;
+    for (const ch of ranks[r]) {
+      if (/\d/.test(ch)) {
+        col += Number(ch);
+      } else if (PIECES.includes(ch)) {
+        cells[r * 8 + col] = ch;
+        col += 1;
+      } else {
+        return null;
+      }
+    }
+    if (col !== 8) return null;
+  }
+  return cells;
+}
+
+function cellsToFen(cells, turn) {
+  const ranks = [];
+  for (let r = 0; r < 8; r++) {
+    let out = "", run = 0;
+    for (let c = 0; c < 8; c++) {
+      const piece = cells[r * 8 + c];
+      if (piece) {
+        if (run) out += run;
+        run = 0;
+        out += piece;
+      } else {
+        run += 1;
+      }
+    }
+    if (run) out += run;
+    ranks.push(out);
+  }
+  return `${ranks.join("/")} ${turn} - - 0 1`;
+}
+
+function squareIndex(square) {
+  const file = square.charCodeAt(0) - 97;
+  const rank = Number(square[1]);
+  return (8 - rank) * 8 + file;
+}
+
+function syncEditBoard() {
+  const turn = currentFenStr.trim().split(/\s+/)[1] || "w";
+  const fen = cellsToFen(editCells, turn === "b" ? "b" : "w");
+  cg.set({fen});
+  fenInput.value = fen;
+}
+
+function setArmed(value) {
+  armed = value;
+  for (const button of paletteBox.querySelectorAll("button")) {
+    button.classList.remove("armed");
+  }
+  if (armed === "erase") {
+    eraseButton.classList.add("armed");
+  } else if (armed) {
+    paletteBox.querySelectorAll("button")[PIECES.indexOf(armed)]
+      ?.classList.add("armed");
+  }
+}
+
+function startEdit() {
+  editing = true;
+  editorBox.hidden = false;
+  editCells = parseFenCells(currentFenStr) || new Array(64).fill(null);
+  // free movement: board pieces are draggable anywhere while editing
+  cg.set({movable: {free: true, color: "both"}, selectable: {enabled: true}});
+  syncEditBoard();
+}
+
+function endEdit() {
+  editing = false;
+  editorBox.hidden = true;
+  setArmed(null);
+  cg.set({selectable: {enabled: true}});
+  refreshDests();
+}
+
+const cg = Chessground(document.getElementById("board"), {
+  fen: itemFen,
+  coordinates: true,
+  movable: {
+    free: false, color: "both", dests: computeDests(),
+    events: {after: onMove},
+  },
+  draggable: {enabled: true},
+  selectable: {enabled: true},
+  premovable: {enabled: false},
+  events: {
+    select(square) {
+      if (!editing || armed === null) return;
+      const index = squareIndex(square);
+      if (index < 0 || index > 63) return;
+      if (armed === "erase") {
+        editCells[index] = null;
+      } else {
+        editCells[index] = armed;
+      }
+      setArmed(null);
+      syncEditBoard();
+    },
+  },
+});
+
+function refreshDests() {
+  cg.set({movable: {dests: computeDests()}});
+}
+
+function applyPosition(fen) {
+  chess = safeChess(fen);
+  currentFenStr = fen;
+  updateTurnIndicator();
+  updateChessComLink();
+  cg.set({fen});
+  refreshDests();
+  scheduleAnalysis();
+}
+
+// ---------------- Stockfish (WASM, in-browser) ----------------
+
+import { StockfishAnalysis } from "{% static 'analysis/engine.js' %}";
+
+const LINE_COUNT = 3;
+let lines = [];              // [{pv, san, eval_cp, eval_mate, shown}]
+let analysisOn = false;      // off by default — engine only runs once ticked
+
+function sanFor(fen, pv) {
+  let board;
+  try {
+    board = new Chess(fen);
+  } catch (error) {
+    console.warn("[training] cannot compute SAN for FEN:", error.message);
+    return [];
+  }
+  const san = [];
+  for (const uci of pv) {
+    const move = board.move({
+      from: uci.slice(0, 2), to: uci.slice(2, 4),
+      promotion: uci.length > 4 ? uci[4] : undefined,
+    });
+    if (!move) break;
+    san.push(move.san);
+  }
+  return san;
+}
+
+let engine = null;
+function ensureEngine() {
+  // the engine (and its CDN download) only starts when analysis is first
+  // enabled — off by default means no engine work at all
+  if (engine) return engine;
+  engine = new StockfishAnalysis({
+    workerUrl: "https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js",
+    fallbackWorkerUrl: "{% static 'books/vendor/stockfish.js' %}",
+    lineCount: LINE_COUNT,
+    onLines: (newLines, fen) => {
+      console.log(`[training] ${newLines.length} engine line(s) for`, fen);
+      lines = newLines.map((info) => ({
+        pv: info.pv,
+        san: sanFor(fen, info.pv),
+        eval_cp: info.eval_cp,
+        eval_mate: info.eval_mate,
+        shown: true,
+      }));
+      renderLines();
+      drawLines();
+    },
+    onError: (message) => {
+      console.error("[training] engine:", message);
+      showError(message);
+    },
+  });
+  return engine;
+}
+
+function runAnalysis() {
+  showError("");
+  if (!analysisOn) {
+    // the manual button enables the analysis if it's still off
+    setAnalysisOn(true);
+  } else {
+    ensureEngine().analyzeNow(currentFenStr);
+  }
+}
+
+function scheduleAnalysis() {
+  if (!analysisOn) return;
+  // re-analyze the new position immediately after every move — the engine
+  // aborts its in-flight search (stop) and starts over on the new FEN
+  ensureEngine().analyzeNow(currentFenStr);
+}
+
+const BRUSHES = ["green", "red", "blue"];
+
+function drawLines() {
+  if (!analysisOn) {
+    cg.setAutoShapes([]);
+    return;
+  }
+  const shapes = [];
+  for (const [i, line] of lines.entries()) {
+    if (!line.shown || !line.pv.length) continue;
+    const mv = line.pv[0];
+    shapes.push({
+      orig: mv.slice(0, 2), dest: mv.slice(2, 4), brush: BRUSHES[i % BRUSHES.length],
+    });
+  }
+  cg.setAutoShapes(shapes);
+}
+
+function evalBadge(line) {
+  if (line.eval_mate !== null) {
+    const sign = line.eval_mate > 0 ? "+" : "";
+    return `M${sign}${line.eval_mate}`;
+  }
+  if (line.eval_cp !== null) {
+    const cp = line.eval_cp / 100;
+    return (cp >= 0 ? "+" : "") + cp.toFixed(2);
+  }
+  return "";
+}
+
+function renderLines() {
+  const box = document.getElementById("lines");
+  box.innerHTML = "";
+  for (const [i, line] of lines.entries()) {
+    const row = document.createElement("p");
+    row.className = "hint";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = line.shown;
+    cb.addEventListener("change", () => { line.shown = cb.checked; drawLines(); });
+    const text = document.createElement("span");
+    text.textContent = ` ${i + 1}. ${line.san.join(" ")}  ${evalBadge(line)}`;
+    row.append(cb, text);
+    box.appendChild(row);
+  }
+  if (!lines.length) {
+    const row = document.createElement("p");
+    row.className = "hint";
+    row.textContent = "Analyzing…";
+    box.appendChild(row);
+  }
+}
+
+function setAnalysisOn(on) {
+  analysisOn = on;
+  document.getElementById("lines").hidden = !on;
+  const toggle = document.getElementById("analysis-switch");
+  toggle.textContent = on ? "Hide Analysis" : "Analysis";
+  toggle.classList.toggle("on", on);  // green while the lines are shown
+  if (on) {
+    // freshly enabled: analyze the current position right away
+    renderLines();
+    scheduleAnalysis();
+  } else {
+    cg.setAutoShapes([]);
+  }
+}
+
+function showError(text) {
+  const el = document.getElementById("error");
+  el.textContent = text;
+  el.hidden = !text;
+}
+
+// ---------------- page actions ----------------
+
+function postJson(url, body) {
+  return fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+    body: JSON.stringify(body),
+  });
+}
+
+async function itemAction(action, extra = {}) {
+  showError("");
+  try {
+    const response = await postJson(actionUrl, {...extra, action});
+    const data = await response.json();
+    if (!response.ok) {
+      showError(data.error || "action failed");
+      return;
+    }
+    savedFen = data.fen;
+    applyPosition(data.fen);
+  } catch (err) {
+    console.error("[training] action failed:", err);
+    showError(String(err));
+  }
+}
+
+async function mark(result) {
+  showError("");
+  try {
+    const response = await postJson(markUrl, {result, status: category});
+    const data = await response.json();
+    if (!response.ok) {
+      showError(data.error || "mark failed");
+      return;
+    }
+    window.location.href = data.next_item_url || backUrl;
+  } catch (err) {
+    console.error("[training] mark failed:", err);
+    showError(String(err));
+  }
+}
+
+document.getElementById("flip-btn").addEventListener("click", () => {
+  cg.toggleOrientation();
+});
+document.getElementById("rotate-btn").addEventListener("click", () => itemAction("rotate"));
+document.getElementById("turn-btn").addEventListener("click", () => itemAction("toggle_turn"));
+
+// editor palette + wiring
+const editorBox = document.getElementById("editor");
+const paletteBox = document.getElementById("palette");
+const fenInput = document.getElementById("fen-input");
+for (const piece of PIECES) {
+  const button = document.createElement("button");
+  button.type = "button";
+  const color = piece === piece.toUpperCase() ? "white" : "black";
+  const role = {K: "king", Q: "queen", R: "rook", B: "bishop", N: "knight", P: "pawn"}[piece.toUpperCase()];
+  const icon = document.createElement("piece");
+  icon.className = color + " " + role;
+  button.appendChild(icon);
+  button.title = color + " " + role;
+  button.addEventListener("click", () =>
+    setArmed(armed === piece ? null : piece)
+  );
+  paletteBox.appendChild(button);
+}
+const eraseButton = document.createElement("button");
+eraseButton.type = "button";
+eraseButton.textContent = "✕";
+eraseButton.className = "erase";
+eraseButton.title = "erase pieces";
+eraseButton.addEventListener("click", () =>
+  setArmed(armed === "erase" ? null : "erase")
+);
+paletteBox.appendChild(eraseButton);
+
+document.getElementById("edit-btn").addEventListener("click", () => {
+  if (editing) {
+    endEdit();
+  } else {
+    startEdit();
+  }
+});
+document.getElementById("edit-cancel").addEventListener("click", () => {
+  endEdit();
+  applyPosition(savedFen);
+});
+document.getElementById("edit-save").addEventListener("click", async () => {
+  const fen = cellsToFen(editCells, currentFenStr.trim().split(/\s+/)[1] || "w");
+  try {
+    const response = await postJson(actionUrl, {action: "set_fen", fen});
+    const data = await response.json();
+    if (!response.ok) {
+      showError(data.error || "save failed");
+      return;
+    }
+    savedFen = data.fen;
+    endEdit();
+    applyPosition(data.fen);
+    console.log("[training] edited position saved:", data.fen);
+    const note = document.getElementById("error");
+    note.className = "trainer-status saved";
+    note.textContent = "Position saved — item and source puzzle updated.";
+    note.hidden = false;
+    setTimeout(() => { note.hidden = true; note.className = "trainer-status wrong"; }, 2500);
+  } catch (err) {
+    console.error("[training] save failed:", err);
+    showError(String(err));
+  }
+});
+document.getElementById("fen-apply").addEventListener("click", () => {
+  const cells = parseFenCells(fenInput.value);
+  if (!cells) {
+    showError("Invalid FEN — not applied.");
+    return;
+  }
+  editCells = cells;
+  currentFenStr = fenInput.value.trim();
+  updateTurnIndicator();
+  updateChessComLink();
+  syncEditBoard();
+});
+document.getElementById("analyze-btn").addEventListener("click", runAnalysis);
+document.getElementById("pass-btn").addEventListener("click", () => mark("passed"));
+document.getElementById("rework-btn").addEventListener("click", () => mark("rework"));
+document.getElementById("reset-btn").addEventListener("click", () => {
+  applyPosition(savedFen);
+});
+document.getElementById("analysis-switch").addEventListener("click", () => {
+  setAnalysisOn(!analysisOn);
+});
+
+// analysis is OFF by default — no engine download or work until the
+// button is on (ensureEngine() starts the worker on first use)
+setAnalysisOn(false);
+</script>
+{% endblock %}

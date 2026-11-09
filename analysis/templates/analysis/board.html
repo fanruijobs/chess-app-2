@@ -1,0 +1,463 @@
+{% extends "analysis/base.html" %}
+{% load static %}
+
+{% block title %}Analysis board{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'books/style.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.base.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.brown.css' %}">
+<link rel="stylesheet" href="{% static 'books/vendor/chessground.cburnett.css' %}">
+<link rel="stylesheet" href="{% static 'books/palette.css' %}">
+<style>
+  /* the board needs an explicit square size — chessground measures its
+     container, which otherwise collapses (pieces render as stray letters) */
+  #board.cg-wrap { width: min(480px, 92vw); height: min(480px, 92vw); }
+
+  /* chess.com default board colors: ivory light squares, green dark
+     squares — matching the puzzle-page board style */
+  #board.cg-wrap cg-board {
+    background-color: #ebecd0;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOng9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiCiAgICAgdmlld0JveD0iMCAwIDggOCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPGcgaWQ9ImEiPgogIDxnIGlkPSJiIj4KICAgIDxnIGlkPSJjIj4KICAgICAgPGcgaWQ9ImQiPgogICAgICAgIDxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGlkPSJlIiBvcGFjaXR5PSIwIi8+CiAgICAgICAgPHVzZSB4PSIxIiB5PSIxIiBocmVmPSIjZSIgeDpocmVmPSIjZSIvPgogICAgICAgIDxyZWN0IHk9IjEiIHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGlkPSJmIiBmaWxsPSIjNzM5NTUyIi8+CiAgICAgICAgPHVzZSB4PSIxIiB5PSItMSIgaHJlZj0iI2YiIHg6aHJlZj0iI2YiLz4KICAgICAgPC9nPgogICAgICA8dXNlIHg9IjIiIGhyZWY9IiNkIiB4OmhyZWY9IiNkIi8+CiAgICA8L2c+CiAgICA8dXNlIHg9IjQiIGhyZWY9IiNjIiB4OmhyZWY9IiNjIi8+CiAgPC9nPgogIDx1c2UgeT0iMiIgaHJlZj0iI2IiIHg6aHJlZj0iI2IiLz4KPC9nPgo8dXNlIHk9IjQiIGhyZWY9IiNhIiB4OmhyZWY9IiNhIi8+Cjwvc3ZnPg==');
+  }
+
+  /* coordinates (the notation): small and inside the board bounds —
+     the vendor offsets push the strips past the wrap edges */
+  #board.cg-wrap coords { font-size: 10px; font-weight: 600; }
+  #board.cg-wrap coords.ranks { top: 0; }
+  #board.cg-wrap coords.files { bottom: 0; }
+  #board.cg-wrap .orientation-white .ranks :nth-child(odd),
+  #board.cg-wrap .orientation-white .files :nth-child(even),
+  #board.cg-wrap .orientation-black .ranks :nth-child(even),
+  #board.cg-wrap .orientation-black .files :nth-child(odd),
+  #board.cg-wrap coords.squares:nth-of-type(odd) :nth-child(even),
+  #board.cg-wrap coords.squares:nth-of-type(even) :nth-child(odd) {
+    color: #26221c;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  #board.cg-wrap .orientation-white .ranks :nth-child(even),
+  #board.cg-wrap .orientation-white .files :nth-child(odd),
+  #board.cg-wrap .orientation-black .ranks :nth-child(odd),
+  #board.cg-wrap .orientation-black .files :nth-child(even),
+  #board.cg-wrap coords.squares:nth-of-type(odd) :nth-child(odd),
+  #board.cg-wrap coords.squares:nth-of-type(even) :nth-child(even) {
+    color: #fdf6e3;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  }
+
+  .palette button {
+    font-size: 22px;
+    width: 36px;
+    height: 36px;
+    margin: 2px;
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .palette button.armed { outline: 2px solid #208530; }
+  .palette button.erase { color: #b33; }
+  .mode-tabs button.active { background: #208530; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Analysis board</h1>
+
+<p class="row-form mode-tabs">
+  <button class="button active" type="button" id="mode-start">From start</button>
+  <button class="button" type="button" id="mode-custom">Custom position</button>
+</p>
+
+<div class="trainer-layout">
+  <div>
+    <div id="board" class="cg-wrap"></div>
+    <div id="editor" hidden>
+      <p class="hint">Pick a piece (or the ✕ eraser), then click squares on
+        the board to place or remove it.</p>
+      <p class="row-form palette" id="palette"></p>
+      <p class="row-form">
+        <button class="button" type="button" id="clear-btn">Clear board</button>
+        <button class="button" type="button" id="start-btn">Start position</button>
+        <button class="button" type="button" id="flip-btn">⇅ Flip board</button>
+      </p>
+      <p class="row-form">
+        <input id="fen-input" size="72" spellcheck="false">
+        <button class="button" type="button" id="fen-apply">Apply FEN</button>
+      </p>
+    </div>
+    <p class="row-form">
+      <label><input type="checkbox" id="analysis-switch" checked> Analysis</label>
+      <button class="button" type="button" id="analyze-btn">Re-analyze</button>
+      <button class="button" type="button" id="undo-btn">↩ Undo move</button>
+    </p>
+  </div>
+  <div>
+    <p class="hint">Only legal moves are movable. Stockfish runs right here
+      in the browser — no requests to the server — up to 3 continuations,
+      1 second or depth 18 per position, refreshed automatically after
+      every move.</p>
+    <p id="eval-summary" class="hint"></p>
+    <div id="lines"></div>
+    <div id="error" class="trainer-status wrong" hidden></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+import { Chessground } from "{% static 'books/vendor/chessground.min.js' %}";
+import { Chess } from "{% static 'books/vendor/chess.js' %}";
+import { askPromotion, needsPromotion } from "{% static 'books/promotion.js' %}";
+import { StockfishAnalysis } from "{% static 'analysis/engine.js' %}";
+
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const EMPTY_FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
+
+const boardEl = document.getElementById("board");
+const fenInput = document.getElementById("fen-input");
+const editorBox = document.getElementById("editor");
+const errorEl = document.getElementById("error");
+const linesBox = document.getElementById("lines");
+
+// ---------------- position state (chess.js) ----------------
+
+let mode = "start";           // "start" | "custom"
+let chess = new Chess();
+let armed = null;             // editor: {type, color} | "erase" | null
+let incomplete = false;       // position lacks both kings (no analysis possible)
+
+function computeDests() {
+  try {
+    // chessground expects a Map<square, square[]>
+    const dests = new Map();
+    for (const move of chess.moves({verbose: true})) {
+      const entry = dests.get(move.from);
+      if (entry) entry.push(move.to);
+      else dests.set(move.from, [move.to]);
+    }
+    incomplete = false;
+    return dests;
+  } catch (error) {
+    // chess.js requires both kings to generate moves
+    console.warn("[analysis-board] no legal moves —", error.message);
+    incomplete = true;
+    return new Map();
+  }
+}
+
+// NOTE: this chessground build fires `after` under movable.events — not
+// the top-level events object
+async function onMove(orig, dest, meta) {
+  let promotion = meta?.promotion;
+  if (!promotion && needsPromotion(chess, orig, dest)) {
+    // chessground has already drawn the pawn on the last rank — ask which
+    // piece before applying the move to chess.js
+    const color = chess.get(orig).color === "b" ? "black" : "white";
+    promotion = await askPromotion(color, boardEl, dest, cg.state.orientation);
+    if (!promotion) {
+      syncBoard();  // dismissed: put the pawn back
+      drawLines();
+      return;
+    }
+  }
+  let applied = null;
+  try {
+    applied = chess.move({from: orig, to: dest, promotion: promotion || undefined});
+  } catch (firstError) {
+    try {
+      applied = chess.move({from: orig, to: dest, promotion: "q"});
+    } catch (secondError) {
+      console.error(`[analysis-board] move ${orig}-${dest} rejected:`,
+                    firstError.message, "/", secondError.message);
+    }
+  }
+  // the piece already moved on the board — only refresh the legal
+  // destinations and the FEN box, no fen reset. A promotion is the
+  // exception: the pawn must be redrawn as the chosen piece.
+  if (applied?.promotion) cg.set({fen: chess.fen()});
+  cg.set({movable: {dests: computeDests()}});
+  if (mode === "custom") fenInput.value = chess.fen();
+  console.log("[analysis-board] move applied — analyzing", chess.fen());
+  scheduleAnalysis();
+}
+
+const cg = Chessground(boardEl, {
+  fen: chess.fen(),
+  coordinates: true,
+  movable: {
+    free: false, color: "both", dests: computeDests(),
+    events: {after: onMove},
+  },
+  draggable: {enabled: true},
+  selectable: {enabled: false},
+  premovable: {enabled: false},
+  events: {
+    select(square) {
+      if (mode !== "custom" || armed === null) return;
+      try {
+        if (armed === "erase") {
+          chess.remove(square);
+        } else {
+          chess.put(armed, square);
+        }
+      } catch (error) {
+        console.error(`[analysis-board] placing ${JSON.stringify(armed)} on ${square} failed:`,
+                      error.message);
+        return; // defensive: keep the previous position
+      }
+      setArmed(null);
+      syncBoard();
+      scheduleAnalysis();
+    },
+  },
+});
+
+function syncBoard() {
+  cg.set({fen: chess.fen()});
+  cg.set({movable: {dests: computeDests()}});
+  if (mode === "custom") fenInput.value = chess.fen();
+}
+
+function loadPosition(fen) {
+  try {
+    chess = new Chess(fen);
+  } catch (error) {
+    console.error("[analysis-board] invalid FEN:", fen, error.message);
+    showError("Invalid FEN — position not changed.");
+    return;
+  }
+  syncBoard();
+  scheduleAnalysis();
+}
+
+function scheduleAnalysis() {
+  // re-analyze the new position immediately — the engine aborts its
+  // in-flight search and starts over on the new FEN
+  engine.analyzeNow(chess.fen());
+}
+
+// ---------------- editor (custom position) ----------------
+
+const PALETTE = [
+  {type: "k", color: "w"},
+  {type: "q", color: "w"},
+  {type: "r", color: "w"},
+  {type: "b", color: "w"},
+  {type: "n", color: "w"},
+  {type: "p", color: "w"},
+  {type: "k", color: "b"},
+  {type: "q", color: "b"},
+  {type: "r", color: "b"},
+  {type: "b", color: "b"},
+  {type: "n", color: "b"},
+  {type: "p", color: "b"},
+];
+
+const paletteBox = document.getElementById("palette");
+for (const piece of PALETTE) {
+  const button = document.createElement("button");
+  button.type = "button";
+  const color = piece.color === "w" ? "white" : "black";
+  const icon = document.createElement("piece");
+  icon.className = color + " " + piece.type;
+  button.appendChild(icon);
+  button.title = color + " " + piece.type;
+  button.addEventListener("click", () =>
+    setArmed(armed && armed !== "erase" &&
+             armed.type === piece.type && armed.color === piece.color
+      ? null : {type: piece.type, color: piece.color})
+  );
+  paletteBox.appendChild(button);
+}
+const eraseButton = document.createElement("button");
+eraseButton.type = "button";
+eraseButton.textContent = "✕";
+eraseButton.className = "erase";
+eraseButton.title = "erase pieces";
+eraseButton.addEventListener("click", () =>
+  setArmed(armed === "erase" ? null : "erase")
+);
+paletteBox.appendChild(eraseButton);
+
+function setArmed(value) {
+  armed = value;
+  for (const button of paletteBox.querySelectorAll("button")) {
+    button.classList.remove("armed");
+  }
+  if (armed === "erase") eraseButton.classList.add("armed");
+  else if (armed) {
+    const index = PALETTE.findIndex(
+      (p) => p.type === armed.type && p.color === armed.color
+    );
+    paletteBox.querySelectorAll("button")[index]?.classList.add("armed");
+  }
+}
+
+document.getElementById("clear-btn").addEventListener("click", () => {
+  chess = new Chess();
+  chess.clear();
+  loadPosition(chess.fen());
+});
+document.getElementById("start-btn").addEventListener("click", () => {
+  chess = new Chess();
+  chess.reset();
+  loadPosition(chess.fen());
+});
+document.getElementById("flip-btn").addEventListener("click", () => {
+  cg.toggleOrientation();
+});
+document.getElementById("fen-apply").addEventListener("click", () => {
+  loadPosition(fenInput.value.trim());
+});
+
+// ---------------- mode switching ----------------
+
+function setMode(next) {
+  mode = next;
+  document.getElementById("mode-start").classList.toggle("active", mode === "start");
+  document.getElementById("mode-custom").classList.toggle("active", mode === "custom");
+  editorBox.hidden = mode !== "custom";
+  cg.set({selectable: {enabled: mode === "custom"}});
+  if (mode === "start") {
+    chess = new Chess();
+    loadPosition(chess.fen());
+  } else {
+    loadPosition(fenInput.value.trim() || EMPTY_FEN);
+  }
+}
+
+document.getElementById("mode-start").addEventListener("click", () => setMode("start"));
+document.getElementById("mode-custom").addEventListener("click", () => setMode("custom"));
+
+// ---------------- Stockfish analysis ----------------
+
+const BRUSHES = ["green", "red", "blue"];
+let lines = [];       // [{pv, san, eval_cp, eval_mate, shown}]
+let analysisOn = true;
+
+function sanFor(fen, pv) {
+  const board = new Chess(fen);
+  const san = [];
+  for (const uci of pv) {
+    const move = board.move({
+      from: uci.slice(0, 2), to: uci.slice(2, 4),
+      promotion: uci.length > 4 ? uci[4] : undefined,
+    });
+    if (!move) break;
+    san.push(move.san);
+  }
+  return san;
+}
+
+const engine = new StockfishAnalysis({
+  workerUrl: "https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js",
+  fallbackWorkerUrl: "{% static 'books/vendor/stockfish.js' %}",
+  onLines: (newLines, fen) => {
+    console.log(`[analysis-board] ${newLines.length} engine line(s) for`, fen);
+    lines = newLines.map((info) => ({
+      pv: info.pv,
+      san: sanFor(fen, info.pv),
+      eval_cp: info.eval_cp,
+      eval_mate: info.eval_mate,
+      shown: true,
+    }));
+    renderLines();
+    drawLines();
+  },
+  onError: (message) => {
+    console.error("[analysis-board] engine:", message);
+    showError(message);
+  },
+});
+
+function drawLines() {
+  if (!analysisOn) {
+    cg.setAutoShapes([]);
+    return;
+  }
+  const shapes = [];
+  for (const [i, line] of lines.entries()) {
+    if (!line.shown || !line.pv.length) continue;
+    const mv = line.pv[0];
+    shapes.push({
+      orig: mv.slice(0, 2), dest: mv.slice(2, 4), brush: BRUSHES[i % BRUSHES.length],
+    });
+  }
+  cg.setAutoShapes(shapes);
+}
+
+function evalBadge(line) {
+  if (line.eval_mate !== null) {
+    const sign = line.eval_mate > 0 ? "+" : "";
+    return `M${sign}${line.eval_mate}`;
+  }
+  if (line.eval_cp !== null) {
+    const cp = line.eval_cp / 100;
+    return (cp >= 0 ? "+" : "") + cp.toFixed(2);
+  }
+  return "";
+}
+
+function renderLines() {
+  linesBox.innerHTML = "";
+  const summary = document.getElementById("eval-summary");
+  if (lines.length) {
+    summary.textContent =
+      `Best: ${lines[0].san.join(" ")} ${evalBadge(lines[0])}`;
+  } else {
+    summary.textContent = incomplete
+      ? "The position needs both kings before it can be analyzed."
+      : "Analyzing…";
+  }
+  for (const [i, line] of lines.entries()) {
+    const row = document.createElement("p");
+    row.className = "hint";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = line.shown;
+    cb.addEventListener("change", () => { line.shown = cb.checked; drawLines(); });
+    const text = document.createElement("span");
+    text.textContent = ` ${i + 1}. ${line.san.join(" ")}  ${evalBadge(line)}`;
+    row.append(cb, text);
+    linesBox.appendChild(row);
+  }
+  if (!lines.length) {
+    const row = document.createElement("p");
+    row.className = "hint";
+    row.textContent = incomplete
+      ? "The position needs both kings before it can be analyzed."
+      : "Analyzing…";
+    linesBox.appendChild(row);
+  }
+}
+
+function setAnalysisOn(on) {
+  analysisOn = on;
+  linesBox.hidden = !on;
+  drawLines();
+}
+
+function showError(text) {
+  errorEl.textContent = text;
+  errorEl.hidden = !text;
+}
+
+document.getElementById("analyze-btn").addEventListener("click", () => {
+  showError("");
+  engine.analyzeNow(chess.fen());
+});
+document.getElementById("undo-btn").addEventListener("click", () => {
+  if (chess.undo()) {
+    syncBoard();
+    scheduleAnalysis();
+  }
+});
+document.getElementById("analysis-switch").addEventListener("change", (event) => {
+  setAnalysisOn(event.target.checked);
+});
+
+// initial analysis from the start position
+scheduleAnalysis();
+</script>
+{% endblock %}

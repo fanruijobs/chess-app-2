@@ -1,0 +1,76 @@
+{
+  "games": [
+    {
+      "url": "https://www.chess.com/game/live/1",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.08.15\"]\n[Round \"-\"]\n[White \"TestUser\"]\n[Black \"opponent1\"]\n[Result \"1-0\"]\n[TimeControl \"300\"]\n[Termination \"opponent1 resigned\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3 d6 6. O-O O-O 1-0",
+      "time_control": "300",
+      "end_time": 1786795200,
+      "rated": true,
+      "time_class": "blitz",
+      "rules": "chess",
+      "uuid": "aaaa0001",
+      "white": {"rating": 1200, "result": "win", "id": "https://api.chess.com/pub/player/testuser", "username": "TestUser"},
+      "black": {"rating": 1180, "result": "resigned", "id": "https://api.chess.com/pub/player/opponent1", "username": "opponent1"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/2",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.08.14\"]\n[Round \"-\"]\n[White \"opponent2\"]\n[Black \"TestUser\"]\n[Result \"0-1\"]\n[TimeControl \"300\"]\n[Termination \"TestUser won by checkmate\"]\n\n1. f3 e5 2. g4 Qh4# 0-1",
+      "time_control": "300",
+      "end_time": 1786708800,
+      "rated": true,
+      "time_class": "blitz",
+      "rules": "chess",
+      "uuid": "aaaa0002",
+      "white": {"rating": 1190, "result": "checkmated", "id": "https://api.chess.com/pub/player/opponent2", "username": "opponent2"},
+      "black": {"rating": 1210, "result": "win", "id": "https://api.chess.com/pub/player/testuser", "username": "TestUser"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/3",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.08.13\"]\n[Round \"-\"]\n[White \"TestUser\"]\n[Black \"opponent3\"]\n[Result \"1/2-1/2\"]\n[TimeControl \"600\"]\n[Termination \"Game drawn by agreement\"]\n\n1. d4 d5 2. c4 c6 1/2-1/2",
+      "time_control": "600",
+      "end_time": 1786622400,
+      "rated": true,
+      "time_class": "rapid",
+      "rules": "chess",
+      "uuid": "aaaa0003",
+      "white": {"rating": 1200, "result": "agreed", "id": "https://api.chess.com/pub/player/testuser", "username": "TestUser"},
+      "black": {"rating": 1205, "result": "agreed", "id": "https://api.chess.com/pub/player/opponent3", "username": "opponent3"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/4",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.08.12\"]\n[Round \"-\"]\n[White \"opponent4\"]\n[Black \"TestUser\"]\n[Result \"1-0\"]\n[TimeControl \"60\"]\n[Termination \"TestUser got checkmated\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0",
+      "time_control": "60",
+      "end_time": 1786536000,
+      "rated": true,
+      "time_class": "bullet",
+      "rules": "chess",
+      "uuid": "aaaa0004",
+      "white": {"rating": 1220, "result": "win", "id": "https://api.chess.com/pub/player/opponent4", "username": "opponent4"},
+      "black": {"rating": 1180, "result": "checkmated", "id": "https://api.chess.com/pub/player/testuser", "username": "TestUser"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/5",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.08.11\"]\n[Round \"-\"]\n[White \"TestUser\"]\n[Black \"opponent5\"]\n[Result \"1-0\"]\n[TimeControl \"300\"]\n[Termination \"opponent5 left the game\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 1-0",
+      "time_control": "300",
+      "end_time": 1786449600,
+      "rated": false,
+      "time_class": "blitz",
+      "rules": "chess",
+      "uuid": "aaaa0005",
+      "white": {"rating": null, "result": "win", "id": "https://api.chess.com/pub/player/testuser", "username": "TestUser"},
+      "black": {"rating": null, "result": "abandoned", "id": "https://api.chess.com/pub/player/opponent5", "username": "opponent5"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/6",
+      "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[Date \"2026.08.10\"]\n[Round \"-\"]\n[White \"TestUser\"]\n[Black \"opponent6\"]\n[Result \"1-0\"]\n[Variant \"Crazyhouse\"]\n[TimeControl \"300\"]\n[Termination \"opponent6 resigned\"]\n\n1. e4 e5 2. Nf3 Nc6 1-0",
+      "time_control": "300",
+      "end_time": 1786363200,
+      "rated": true,
+      "time_class": "blitz",
+      "rules": "crazyhouse",
+      "uuid": "aaaa0006",
+      "white": {"rating": 1200, "result": "win", "id": "https://api.chess.com/pub/player/testuser", "username": "TestUser"},
+      "black": {"rating": 1180, "result": "resigned", "id": "https://api.chess.com/pub/player/opponent6", "username": "opponent6"}
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+<div class="source-entry">
+  <label>Source
+    <select class="source-type" name="source_type_{{ index }}">
+      <option value="book">Book</option>
+      <option value="turning_points">Game turning points</option>
+      <option value="rework">Re-work positions</option>
+    </select>
+  </label>
+  <span class="rework-fields" hidden>
+    <label>From set
+      <select name="from_set_{{ index }}">
+        {% for s in sets %}
+          <option value="{{ s.pk }}">{{ s.name }} ({{ s.rework }} re-work)</option>
+        {% endfor %}
+      </select>
+    </label>
+  </span>
+  <span class="book-fields">
+    <label>Book
+      <select name="book_{{ index }}">
+        {% for book in books %}
+          <option value="{{ book.slug }}">{{ book.title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Pages <input type="number" name="pages_from_{{ index }}" min="1" size="4" placeholder="from">–
+      <input type="number" name="pages_to_{{ index }}" min="1" size="4" placeholder="to"></label>
+    <label>Puzzle numbers <input type="text" name="numbers_from_{{ index }}" size="7" placeholder="from">–
+      <input type="text" name="numbers_to_{{ index }}" size="7" placeholder="to"></label>
+  </span>
+  <span class="tp-fields" hidden>
+    <label>Player
+      <select name="player_{{ index }}">
+        {% for player in players %}
+          <option value="{{ player.username }}">{{ player.username }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Games <input type="date" name="date_from_{{ index }}"> to
+      <input type="date" name="date_to_{{ index }}"></label>
+    <label>Classification
+      <select name="classifications_{{ index }}">
+        <option value="">(any)</option>
+        {% for value, label in classifications %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </span>
+  <button type="button" class="remove-source" title="Remove this source">✕</button>
+</div>

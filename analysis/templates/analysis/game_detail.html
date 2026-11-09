@@ -1,0 +1,164 @@
+{% extends "analysis/base.html" %}
+{% load static %}
+
+{% block title %}{{ game.white_username }} vs {{ game.black_username }} · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'analysis:players_list' %}">Players</a> /
+  <a href="{% url 'analysis:players_detail' game.player.username %}">{{ game.player.username }}</a> /
+  {{ game.white_username }} vs {{ game.black_username }}
+</h1>
+
+<p class="stats-line">
+  {{ game.end_time|date:"Y-m-d" }} ·
+  <span class="badge badge-{{ game.result }}">{{ game.get_result_display|upper }}</span> ·
+  {{ game.time_class|default:"?" }} ·
+  you played {{ game.player_side|upper }} ·
+  <a href="{{ game.url }}" rel="noreferrer">chess.com</a> ·
+  <a href="{% url 'analysis:game_pdf' game.uuid %}">Export PDF</a>
+</p>
+
+<form method="post" class="inline-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="queue">
+  <button type="submit" class="small">Queue re-analysis</button>
+</form>
+
+{% if total_plies %}
+<div class="game-layout">
+  <div class="board-pane">
+    {{ board_svg|safe }}
+    <p class="board-nav">
+      <a href="?move=0">⏮ Start</a>
+      <a href="?move={{ current_ply|add:-1 }}">◀ Prev</a>
+      <span>move {{ current_ply }}/{{ total_plies }}</span>
+      <a href="?move={{ current_ply|add:1 }}">Next ▶</a>
+      <a href="?move={{ total_plies }}">End ⏭</a>
+    </p>
+  </div>
+
+  <div class="side-pane">
+    <div class="movelist">
+      {% for entry in movelist %}
+        <span class="move-pair">
+          <span class="move-number">{{ entry.number }}.</span>
+          {% if entry.white %}
+            <a href="?move={{ entry.white.ply }}"
+               class="{% if entry.white.ply in tp_plies %}is-tp{% endif %}"
+               {% if current_ply == entry.white.ply %}style="font-weight:bold"{% endif %}>{{ entry.white.san }}</a>
+          {% endif %}
+          {% if entry.black %}
+            <a href="?move={{ entry.black.ply }}"
+               class="{% if entry.black.ply in tp_plies %}is-tp{% endif %}"
+               {% if current_ply == entry.black.ply %}style="font-weight:bold"{% endif %}>{{ entry.black.san }}</a>
+          {% endif %}
+        </span>
+      {% endfor %}
+    </div>
+
+    <div class="chart-pane">
+      <canvas id="eval-chart" height="180"></canvas>
+      <p class="hint">Evaluation from your perspective; red dots are turning points,
+        dashed line is the −{{ threshold_cp }} cp threshold.</p>
+    </div>
+  </div>
+</div>
+{% else %}
+<p class="empty">This game has not been analyzed yet —
+  <a href="{% url 'analysis:players_detail' game.player.username %}">run the analysis</a>.</p>
+{% endif %}
+
+<section class="turning-points">
+  <h2>Turning points ({{ turning_points|length }})</h2>
+  {% for tp in turning_points %}
+    {% include "analysis/_turning_point.html" with tp=tp %}
+  {% empty %}
+    <p class="empty">No turning points at the analyzed threshold — clean game! 🎉</p>
+  {% endfor %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{% if total_plies %}
+{{ chart_data_json|json_script:"evals-data" }}
+<script src="{% static 'analysis/vendor/chart.umd.js' %}"></script>
+<script>
+(function () {
+  const evalsData = JSON.parse(document.getElementById('evals-data').textContent);
+  const thresholdCp = {{ threshold_cp }};
+  if (!evalsData.length) return;
+  new Chart(document.getElementById('eval-chart'), {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Evaluation (centipawns, your perspective)',
+          data: evalsData,
+          parsing: { xAxisKey: 'ply', yAxisKey: 'y' },
+          borderColor: '#2a78d6',
+          borderWidth: 2,
+          backgroundColor: 'rgba(42,120,214,0.10)',
+          fill: 'origin',
+          tension: 0,
+          pointRadius: evalsData.map(d => d.isTurningPoint ? 6 : 0),
+          pointBackgroundColor: '#d03b3b',
+          pointBorderColor: '#fcfcfb',
+          pointBorderWidth: 2,
+          pointHitRadius: 10,
+        },
+        {
+          label: 'threshold',
+          data: evalsData.map(() => -thresholdCp),
+          borderColor: '#898781',
+          borderDash: [6, 6],
+          borderWidth: 1,
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: 'Engine evaluation per move (your perspective)',
+          color: '#0b0b0b',
+          font: { size: 13 },
+        },
+        tooltip: {
+          filter: (item) => item.datasetIndex === 0,
+          callbacks: {
+            title: (items) => {
+              const d = items[0] && items[0].raw;
+              return d ? 'Move ' + d.ply + ': ' + d.san : '';
+            },
+            label: (item) => {
+              const d = item.raw;
+              if (!d) return '';
+              return 'eval ' + d.evalText + (d.isTurningPoint ? ' · turning point' : '');
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'ply', color: '#52514e' },
+          ticks: { color: '#898781' },
+          grid: { display: false },
+        },
+        y: {
+          title: { display: true, text: 'centipawns', color: '#52514e' },
+          ticks: { color: '#898781' },
+          grid: { color: '#e1e0d9' },
+        },
+      },
+    },
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

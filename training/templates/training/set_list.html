@@ -1,0 +1,111 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}Training sets · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>Training sets</h1>
+
+<section>
+  <h2>Create a set</h2>
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <label>Name <input type="text" name="name" size="24" placeholder="e.g. Steps p003-p007 + my blunders" required></label>
+    </p>
+    <div id="sources">
+      {% include "training/_source_row.html" with index=0 %}
+    </div>
+    <p class="row-form">
+      <button class="button" type="button" id="add-source">+ Add another source</button>
+      <button class="button" type="submit">Create set</button>
+    </p>
+    <p class="hint">A set can mix any number of book ranges and turning-point
+      ranges; every matching position is included in order.</p>
+  </form>
+  <form method="post" class="row-form">
+    {% csrf_token %}
+    <select name="clone_from" required>
+      <option value="">— clone from an existing set —</option>
+      {% for s in sets %}
+        <option value="{{ s.pk }}">{{ s.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="clone_name" size="24"
+           placeholder="new name (optional)">
+    <button class="button" type="submit">Clone set</button>
+  </form>
+  <p class="hint">Cloning copies every position of the chosen set into a new
+    set (all positions start as pending).</p>
+</section>
+
+<section>
+  <h2>Your sets</h2>
+  {% if sets %}
+  <table>
+    <thead>
+      <tr><th>Name</th><th class="num">Total</th><th class="num">Pending</th>
+        <th class="num">Re-work</th><th class="num">Passed</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+      {% for s in set_page %}
+        <tr>
+          <td><a href="{% url 'training:set_detail' s.pk %}">{{ s.name }}</a></td>
+          <td class="num">{{ s.total }}</td>
+          <td class="num">{{ s.pending }}</td>
+          <td class="num">{{ s.rework }}</td>
+          <td class="num">{{ s.passed }}</td>
+          <td>{{ s.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if set_page.paginator.num_pages > 1 %}
+  <p class="filter-row">
+    {% if set_page.has_previous %}
+      <a href="?p={{ set_page.previous_page_number }}">← previous</a>
+    {% endif %}
+    page {{ set_page.number }} of {{ set_page.paginator.num_pages }}
+    {% if set_page.has_next %}
+      <a href="?p={{ set_page.next_page_number }}">next →</a>
+    {% endif %}
+  </p>
+  {% endif %}
+  {% else %}
+  <p class="hint">No sets yet — create one above.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<template id="source-row-template">
+  {% include "training/_source_row.html" with index="__IDX__" %}
+</template>
+<script>
+  let rowCount = 1;
+  document.getElementById("add-source").addEventListener("click", function () {
+    const template = document.getElementById("source-row-template").innerHTML;
+    const html = template.replaceAll("__IDX__", String(rowCount++));
+    const wrapper = document.createElement("div");
+    wrapper.className = "source-entry";
+    wrapper.innerHTML = html;
+    document.getElementById("sources").appendChild(wrapper);
+    bindSourceType(wrapper.querySelector(".source-type"));
+    bindRemoveSource(wrapper);
+  });
+  function bindSourceType(select) {
+    select.addEventListener("change", function () {
+      const row = select.closest(".source-entry");
+      row.querySelector(".book-fields").hidden = select.value !== "book";
+      row.querySelector(".tp-fields").hidden = select.value !== "turning_points";
+      row.querySelector(".rework-fields").hidden = select.value !== "rework";
+    });
+  }
+  function bindRemoveSource(row) {
+    row.querySelector(".remove-source").addEventListener("click", function () {
+      row.remove();
+    });
+  }
+  document.querySelectorAll(".source-type").forEach(bindSourceType);
+  document.querySelectorAll("#sources .source-entry").forEach(bindRemoveSource);
+</script>
+{% endblock %}

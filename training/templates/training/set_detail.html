@@ -1,0 +1,116 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}{{ training_set.name }} · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'training:set_list' %}">Training sets</a> / {{ training_set.name }}
+</h1>
+
+<p class="stats-line">
+  <strong>{{ stats.total }}</strong> positions ·
+  <span class="badge badge-review">{{ stats.pending }} pending</span> ·
+  <span class="badge badge-rejected">{{ stats.rework }} re-work</span> ·
+  <span class="badge badge-verified">{{ stats.passed }} passed</span>
+  {% if stats.pass_rate is not None %} ·
+    pass rate <strong>{{ stats.pass_rate }}%</strong>{% endif %}
+</p>
+
+<p class="filter-row">
+  Categories:
+  {% for value, label in categories %}
+    <a href="?status={{ value }}"
+       {% if category == value %}class="button"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</p>
+
+<p class="row-form">
+  {% if first_item %}
+  <a class="button" href="{% url 'training:item_session' training_set.pk first_item.pk %}{% if category != 'pending' %}?status={{ category }}{% endif %}">Start training</a>
+  {% endif %}
+  <a class="button" href="{% url 'training:set_pdf' training_set.pk %}"
+     title="all positions of this set, in the default print layout">Export PDF</a>
+  <form method="post" action="{% url 'training:set_mark_all' training_set.pk %}" style="display:inline">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="{{ category }}">
+    <input type="hidden" name="result" value="passed">
+    <button class="button" type="submit">Mark category passed</button>
+  </form>
+  <form method="post" action="{% url 'training:set_mark_all' training_set.pk %}" style="display:inline">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="{{ category }}">
+    <input type="hidden" name="result" value="rework">
+    <button class="button" type="submit">Mark category re-work</button>
+  </form>
+</p>
+
+<section>
+  <h2>Add positions</h2>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="add_positions" value="1">
+    <div id="sources">
+      {% include "training/_source_row.html" with index=0 %}
+    </div>
+    <p class="row-form">
+      <button class="button" type="button" id="add-source">+ Add another source</button>
+      <button class="button" type="submit">Add to set</button>
+    </p>
+  </form>
+</section>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th><th>Position</th><th>Best move</th><th>Status</th>
+      <th class="num">Attempts</th><th>Last trained</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+      <tr>
+        <td class="num">{{ forloop.counter }}</td>
+        <td><a href="{% url 'training:item_session' training_set.pk item.pk %}{% if category != 'pending' %}?status={{ category }}{% endif %}">{{ item.label|default:item.pk }}</a></td>
+        <td>{{ item.san_best }}</td>
+        <td><span class="badge badge-{{ item.status }}">{{ item.get_status_display }}</span></td>
+        <td class="num">{{ item.attempts }}</td>
+        <td>{{ item.last_trained_at|date:"Y-m-d H:i"|default:"—" }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+
+{% block extra_js %}
+<template id="source-row-template">
+  {% include "training/_source_row.html" with index="__IDX__" %}
+</template>
+<script>
+  let rowCount = 1;
+  document.getElementById("add-source").addEventListener("click", function () {
+    const template = document.getElementById("source-row-template").innerHTML;
+    const html = template.replaceAll("__IDX__", String(rowCount++));
+    const wrapper = document.createElement("div");
+    wrapper.className = "source-entry";
+    wrapper.innerHTML = html;
+    document.getElementById("sources").appendChild(wrapper);
+    bindSourceType(wrapper.querySelector(".source-type"));
+    bindRemoveSource(wrapper);
+  });
+  function bindSourceType(select) {
+    select.addEventListener("change", function () {
+      const row = select.closest(".source-entry");
+      row.querySelector(".book-fields").hidden = select.value !== "book";
+      row.querySelector(".tp-fields").hidden = select.value !== "turning_points";
+      row.querySelector(".rework-fields").hidden = select.value !== "rework";
+    });
+  }
+  function bindRemoveSource(row) {
+    row.querySelector(".remove-source").addEventListener("click", function () {
+      row.remove();
+    });
+  }
+  document.querySelectorAll(".source-type").forEach(bindSourceType);
+  document.querySelectorAll("#sources .source-entry").forEach(bindRemoveSource);
+</script>
+{% endblock %}

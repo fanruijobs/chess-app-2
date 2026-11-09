@@ -1,0 +1,178 @@
+{% extends "analysis/base.html" %}
+
+{% block title %}{{ player.username }} · Chess Trainer{% endblock %}
+
+{% block content %}
+<h1>
+  <a href="{% url 'analysis:players_list' %}">Players</a> / {{ player.username }}
+</h1>
+
+<p class="stats-line">
+  <strong>{{ stats.total }}</strong> games ·
+  <strong>{{ stats.analyzed }}</strong> analyzed ·
+  <strong>{{ stats.losses }}</strong> losses
+</p>
+
+<p class="chips">
+  {% for t in type_stats %}
+    <span class="chip" title="{{ t.time_class|default:'unknown' }} games">
+      <strong>{{ t.time_class|default:"?" }}</strong>
+      {{ t.total }} games · {{ t.losses }} losses
+    </span>
+  {% endfor %}
+</p>
+
+<section class="card">
+  <h2>Export turning points as PDF</h2>
+  <form method="post" class="row-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="export">
+    <label>From
+      <input type="date" name="from" value="{{ from_date }}">
+    </label>
+    <label>To
+      <input type="date" name="to" value="{{ to_date }}">
+    </label>
+    <label>Game type
+      <select name="time_class">
+        <option value="">all</option>
+        {% for tc in time_classes %}
+          <option value="{{ tc }}">{{ tc }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="checkbox"><input type="checkbox" name="lost_only"> Lost games only</label>
+    <label>Answers
+      <select name="answers">
+        <option value="inline">under each position</option>
+        <option value="end">key at the end (training)</option>
+        <option value="none">no answers</option>
+      </select>
+    </label>
+    <button type="submit">Export PDF</button>
+  </form>
+  <p class="hint">6 positions per A4 page (2 columns × 3 rows). With answers at the
+    end or none, the diagrams print ~1/3 larger.</p>
+</section>
+
+<section class="card">
+  <h2>Queue analysis</h2>
+  <form method="post" class="row-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="queue">
+    <label class="checkbox"><input type="checkbox" name="lost_only" checked> Lost games only</label>
+    <label>Game type
+      <select name="time_class">
+        <option value="">all</option>
+        {% for tc in time_classes %}
+          <option value="{{ tc }}">{{ tc }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Queue</button>
+  </form>
+  <p class="hint">Each game is analyzed with its time-class profile —
+    bullet 14/250, blitz 16/200, rapid 18/150, daily 20/120 (depth/threshold).</p>
+  <p class="queue-status">
+    Queue: <strong>{{ job_counts.queued }}</strong> queued ·
+    <strong>{{ job_counts.running }}</strong> running ·
+    <strong>{{ job_counts.done }}</strong> done ·
+    <strong>{{ job_counts.failed }}</strong> failed
+    ·
+    {% if worker.alive %}
+      <span class="worker-alive">● worker running{% if worker.heartbeat.pid %} (pid {{ worker.heartbeat.pid }}){% endif %}</span>
+    {% else %}
+      <span class="worker-dead">● worker offline — start it with
+        <code>.venv/bin/python manage.py analyze_worker</code></span>
+    {% endif %}
+  </p>
+</section>
+
+<section>
+  <p class="filter-row">
+    Dates:
+    <form method="get" class="row-form inline">
+      <input type="hidden" name="result" value="{{ result_filter }}">
+      {% if time_filter %}<input type="hidden" name="time" value="{{ time_filter }}">{% endif %}
+      {% if analyzed_filter %}<input type="hidden" name="analyzed" value="{{ analyzed_filter }}">{% endif %}
+      <input type="date" name="from" value="{{ from_date }}">
+      <span>–</span>
+      <input type="date" name="to" value="{{ to_date }}">
+      <button type="submit" class="small">Filter</button>
+    </form>
+  </p>
+  <p class="filter-row">
+    Result:
+    <a href="?result=all{% if time_filter %}&time={{ time_filter }}{% endif %}{% if analyzed_filter %}&analyzed={{ analyzed_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if result_filter == 'all' %}active{% endif %}">all</a>
+    <a href="?result=win{% if time_filter %}&time={{ time_filter }}{% endif %}{% if analyzed_filter %}&analyzed={{ analyzed_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if result_filter == 'win' %}active{% endif %}">wins</a>
+    <a href="?result=loss{% if time_filter %}&time={{ time_filter }}{% endif %}{% if analyzed_filter %}&analyzed={{ analyzed_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if result_filter == 'loss' %}active{% endif %}">losses</a>
+    <a href="?result=draw{% if time_filter %}&time={{ time_filter }}{% endif %}{% if analyzed_filter %}&analyzed={{ analyzed_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if result_filter == 'draw' %}active{% endif %}">draws</a>
+    ·
+    Type:
+    <a href="?result={{ result_filter }}{% if analyzed_filter %}&analyzed={{ analyzed_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if not time_filter %}active{% endif %}">all</a>
+    {% for tc in time_classes %}
+      <a href="?result={{ result_filter }}&time={{ tc }}{% if analyzed_filter %}&analyzed={{ analyzed_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+         class="{% if time_filter == tc %}active{% endif %}">{{ tc }}</a>
+    {% endfor %}
+    ·
+    Analyzed:
+    <a href="?result={{ result_filter }}{% if time_filter %}&time={{ time_filter }}{% endif %}{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if not analyzed_filter %}active{% endif %}">any</a>
+    <a href="?result={{ result_filter }}{% if time_filter %}&time={{ time_filter }}{% endif %}&analyzed=1{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if analyzed_filter == '1' %}active{% endif %}">yes</a>
+    <a href="?result={{ result_filter }}{% if time_filter %}&time={{ time_filter }}{% endif %}&analyzed=0{% if from_date or to_date %}&from={{ from_date }}&to={{ to_date }}{% endif %}"
+       class="{% if analyzed_filter == '0' %}active{% endif %}">no</a>
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Game</th>
+        <th>Opponent</th>
+        <th>Result</th>
+        <th>Type</th>
+        <th class="num">Turning points</th>
+        <th>Analyzed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% regroup games by end_time|date:"Y-m-d" as games_by_date %}
+      {% for group in games_by_date %}
+        <tr class="date-group">
+          <td colspan="6">
+            {{ group.grouper }}
+            · {{ group.list|length }} game{{ group.list|length|pluralize }}
+          </td>
+        </tr>
+        {% for game in group.list %}
+          <tr>
+            <td>
+              <a href="{% url 'analysis:game_detail' game.uuid %}">{{ game.end_time|time:"H:i" }}</a>
+            </td>
+            <td>
+              {% if game.player_side == "w" %}
+                {{ game.black_username }}
+                {% if game.black_rating %}({{ game.black_rating }}){% endif %}
+              {% else %}
+                {{ game.white_username }}
+                {% if game.white_rating %}({{ game.white_rating }}){% endif %}
+              {% endif %}
+            </td>
+            <td><span class="badge badge-{{ game.result }}">{{ game.get_result_display|upper }}</span></td>
+            <td>{{ game.time_class|default:"—" }}</td>
+            <td class="num">{{ game.tp_count }}</td>
+            <td>{% if game.analyzed_at %}{{ game.analyzed_at|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      {% empty %}
+        <tr><td colspan="6" class="empty">No games match this filter.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
