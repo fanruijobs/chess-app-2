@@ -40,9 +40,14 @@ The deployment job assumes:
   IPs are dynamic; either allow port 22 from the runner ranges (or `0.0.0.0/0`
   as a last resort), or use a self-hosted runner / VPN.
 
-`rsync --delete` preserves the server-side `.env`, `media/`, `uploaded-books/`,
+The deploy job preserves the server-side `.env`, `media/`, `uploaded-books/`,
 `staticfiles/`, `tmp/`, and `chessdata-fixture.json` via excludes. Do not
 remove those excludes.
+
+After `systemctl restart`, the health check polls both gunicorn (`:8000`) and
+nginx (`:8888`) for up to 60 seconds. This matters because systemd reports the
+service as active before gunicorn has finished binding the socket; checking
+immediately can produce a transient nginx 502.
 
 ## Running tests locally
 
