@@ -124,60 +124,85 @@ def test_puzzle_board_svg(client, review_puzzle):
     assert b"<svg" in response.content
 
 
-def test_puzzle_view_rotate_persists_and_reverts(client, book):
+def test_puzzle_view_rotate_persists_and_reverts(admin_client, book):
     fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
     puzzle = Puzzle.objects.create(book=book, fen=fen, status=Puzzle.Status.REVIEW)
-    response = client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
+    response = admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
     assert response.status_code == 302
     puzzle.refresh_from_db()
     assert puzzle.fen != fen
     # the rotation is its own inverse: clicking again reverts
-    client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
+    admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
     puzzle.refresh_from_db()
     assert puzzle.fen == fen
 
 
-def test_puzzle_view_rotate_handles_castling(client, book):
+def test_puzzle_view_rotate_handles_castling(admin_client, book):
     puzzle = Puzzle.objects.create(
         book=book, fen="r3k2r/8/8/8/8/8/8/4K3 w KQkq - 0 1",
         status=Puzzle.Status.VERIFIED,
     )
-    client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
+    admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
     puzzle.refresh_from_db()
     # castling rights are dropped: the rotated king sits off e1/e8
     assert puzzle.fen == "3K4/8/8/8/8/8/8/r2k3r w - - 0 1"
-    client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
+    admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
     puzzle.refresh_from_db()
     assert puzzle.fen == "r3k2r/8/8/8/8/8/8/4K3 w - - 0 1"
 
 
-def test_puzzle_view_toggle_turn_persists(client, book):
+def test_puzzle_view_toggle_turn_persists(admin_client, book):
     puzzle = Puzzle.objects.create(
         book=book, fen="4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
         status=Puzzle.Status.REVIEW,
     )
-    client.post(f"/puzzles/{puzzle.pk}/", {"action": "toggle_turn"})
+    admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "toggle_turn"})
     puzzle.refresh_from_db()
     assert " b " in puzzle.fen
-    client.post(f"/puzzles/{puzzle.pk}/", {"action": "toggle_turn"})
+    admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "toggle_turn"})
     puzzle.refresh_from_db()
     assert " w " in puzzle.fen
 
 
-def test_puzzle_view_toggle_turn_rejects_invalid_fen(client, book):
+def test_puzzle_view_toggle_turn_rejects_invalid_fen(admin_client, book):
     puzzle = Puzzle.objects.create(book=book, fen="not a fen", status=Puzzle.Status.REVIEW)
-    response = client.post(f"/puzzles/{puzzle.pk}/", {"action": "toggle_turn"})
+    response = admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "toggle_turn"})
     assert response.status_code == 302
     puzzle.refresh_from_db()
     assert puzzle.fen == "not a fen"
 
 
-def test_puzzle_view_rotate_rejects_invalid_fen(client, book):
+def test_puzzle_view_rotate_rejects_invalid_fen(admin_client, book):
     puzzle = Puzzle.objects.create(book=book, fen="not a fen", status=Puzzle.Status.REVIEW)
-    response = client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
+    response = admin_client.post(f"/puzzles/{puzzle.pk}/", {"action": "rotate"})
     assert response.status_code == 302
     puzzle.refresh_from_db()
     assert puzzle.fen == "not a fen"
+
+
+def test_puzzle_view_edit_controls_are_superuser_only(client, admin_user, book):
+    puzzle = Puzzle.objects.create(
+        book=book, fen="4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
+        status=Puzzle.Status.REVIEW,
+    )
+    non_admin = client.get(f"/puzzles/{puzzle.pk}/").content.decode()
+    assert "Fix orientation" not in non_admin
+    assert "switch (saves)" not in non_admin
+    admin = Client()
+    admin.force_login(admin_user)
+    superuser = admin.get(f"/puzzles/{puzzle.pk}/").content.decode()
+    assert "Fix orientation" in superuser
+    assert "switch (saves)" in superuser
+
+
+def test_puzzle_view_edit_actions_forbidden_for_non_superuser(client, book):
+    fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
+    puzzle = Puzzle.objects.create(book=book, fen=fen, status=Puzzle.Status.REVIEW)
+    for action in ("rotate", "toggle_turn"):
+        response = client.post(f"/puzzles/{puzzle.pk}/", {"action": action})
+        assert response.status_code == 302
+    puzzle.refresh_from_db()
+    assert puzzle.fen == fen
 
 
 def test_books_index_and_detail(client, book):

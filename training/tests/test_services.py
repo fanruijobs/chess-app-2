@@ -61,6 +61,18 @@ def test_create_book_set_with_number_range(book, puzzles, owner):
     assert list(s.items.values_list("label", flat=True)) == ["7", "13"]
 
 
+def test_create_book_set_with_explicit_numbers(book, puzzles, owner):
+    # hand-picked, scattered numbers (the shape used by re-work sets)
+    s = create_set("N", [book_entry(book, numbers=[13, 1, 14])], owner)
+    assert list(s.items.values_list("label", flat=True)) == ["1", "13", "14"]
+    assert s.filters == [book_entry(book, numbers=[13, 1, 14])]
+
+
+def test_explicit_numbers_ignore_unknown_values(book, puzzles, owner):
+    s = create_set("N", [book_entry(book, numbers=[999, 7])], owner)
+    assert list(s.items.values_list("label", flat=True)) == ["7"]
+
+
 def test_create_book_set_slots_number_range(book, puzzles, owner):
     CalibrationProfile.objects.create(
         book=book,

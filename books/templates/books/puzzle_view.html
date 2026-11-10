@@ -46,6 +46,7 @@
         Flip board ({% if flipped %}a1{% else %}h8{% endif %} bottom-left)
       </a>
     </p>
+    {% if user.is_superuser %}
     <form method="post" action="{% url 'books:puzzle_view' puzzle.pk %}" class="row-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="toggle_turn">
@@ -62,6 +63,7 @@
         Fix orientation: rotate notation 180° (saves)
       </button>
     </form>
+    {% endif %}
     <p class="hint">Current: {% if " w " in display_fen %}white{% else %}black{% endif %} to move ·
       {% if flipped %}h8{% else %}a1{% endif %} at the bottom-left</p>
   </div>

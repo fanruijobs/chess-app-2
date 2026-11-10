@@ -5,11 +5,18 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .coverage
+coverage.xml
+htmlcov/
 
 # Django
 db.sqlite3
 *.log
 staticfiles/
+
+# Browser tests
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Local config
 .env

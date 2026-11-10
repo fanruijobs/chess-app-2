@@ -128,13 +128,22 @@ be a `Map`, and the `after` move callback lives under
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest                        # unit tests (fast)
-.venv/bin/python -m pytest -m ""                  # include real-Stockfish integration tests
-.venv/bin/python -m pytest --cov=chessdata --cov=analysis --cov-report=term   # coverage
+.venv/bin/python -m pytest                        # unit tests (fast; excludes integration + e2e)
+.venv/bin/python -m pytest -m integration         # real-Stockfish integration tests
+.venv/bin/python -m pytest -m ""                  # include integration tests (not e2e)
+.venv/bin/python -m pytest --cov=chessdata --cov=analysis --cov=books --cov=training --cov-report=term
+
+# browser end-to-end tests
+.venv/bin/pip install -r requirements-e2e.txt
+.venv/bin/python -m playwright install chromium
+.venv/bin/python -m pytest tests/e2e -m e2e
 ```
 
-App-code coverage is ~74% with the full suite (core logic: turning-point
+App-code coverage is ~74% with the full unit suite (core logic: turning-point
 predicate, classifiers, queue, LLM client, sync service, PDF layout).
+
+CI/CD lives in `.github/workflows/`; see `.github/workflows/README.md` for
+required secrets and server setup.
 
 ## Puzzle books (scan -> train)
 
@@ -292,12 +301,12 @@ sets at `/train-sets/` (see below), and export PGN (`export_puzzles`).
   (`?p=N`). "Download page N as PDF" exports **6 puzzles per page** in a
   fixed 2×3 grid: compact title zone, identical board sizes across pages,
   no FENs, black-to-move marked as `#p007-01(B)`
-- `/puzzles/<pk>/` — the puzzle board plus persistent fixes: **Fix orientation**
-  rotates the notation 180° and saves (for scans the OCR read from the wrong
-  side), the **to-move switch** flips the side to move in the stored FEN and
-  saves, and **prev/next buttons** walk through the book's puzzles in its own
-  order (numeric number for printed books, page/slot for steps books); "flip
-  board" is view-only
+- `/puzzles/<pk>/` — the puzzle board plus persistent fixes (admin only):
+  **Fix orientation** rotates the notation 180° and saves (for scans the OCR
+  read from the wrong side), the **to-move switch** flips the side to move in
+  the stored FEN and saves, and **prev/next buttons** walk through the book's
+  puzzles in its own order (numeric number for printed books, page/slot for
+  steps books); "flip board" is view-only
 - `/review/` — extraction review queue (lowest confidence first); click-to-fix
   the board, record the book's own puzzle number, verify/reject
 - `/bad-fens/` — every illegal stored FEN (malformed, missing/extra kings,
@@ -307,10 +316,10 @@ sets at `/train-sets/` (see below), and export PGN (`export_puzzles`).
   and the Re-work positions of other sets; existing sets can also be
   **cloned** from the creation page. The session board is interactive:
   **only legal moves are movable** (chess.js), a White/Black-to-move
-  indicator, flip / fix-orientation / switch-side-to-move buttons (the
-  latter two persist to the item's FEN), a **position editor** for
-  repairing ill-scanned boards (palette click/drag or paste a FEN; saving
-  also fixes the source puzzle in the book), an opt-in **Analysis toggle
+  indicator, flip / fix-orientation / switch-side-to-move buttons (the latter
+  two persist to the item's FEN and are admin-only), a **position editor** for
+  repairing ill-scanned boards (admin only; palette click/drag or paste a FEN;
+  saving also fixes the source puzzle in the book), an opt-in **Analysis toggle
   button** (blue; green "Hide Analysis" while the lines are shown) that
   runs Stockfish in the browser — up to 3 continuations, 1 second or
   depth 18 per position, refreshed after every move — and an **Open in

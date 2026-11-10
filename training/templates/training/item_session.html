@@ -97,12 +97,14 @@
     <div id="board" class="cg-wrap"></div>
     <p class="row-form">
       <button class="button" type="button" id="flip-btn">⇅ Flip board</button>
+      {% if user.is_superuser %}
       <button class="button" type="button" id="rotate-btn"
               title="rotate the stored position 180° (a1 ↔ h8) — for scans read from the wrong side. Saves to the database.">⟲ Fix orientation</button>
       <button class="button" type="button" id="turn-btn"
               title="switch which side is to move. Saves to the database.">⚫⇄⚪ Switch side to move</button>
       <button class="button" type="button" id="edit-btn"
               title="repair an ill-scanned board: place/remove pieces, then save. Also updates the source puzzle.">✏️ Edit position</button>
+      {% endif %}
     </p>
     <div id="editor" hidden>
       <p class="hint">Pick a piece (or the ✕ eraser), then click squares on
@@ -602,8 +604,8 @@ async function mark(result) {
 document.getElementById("flip-btn").addEventListener("click", () => {
   cg.toggleOrientation();
 });
-document.getElementById("rotate-btn").addEventListener("click", () => itemAction("rotate"));
-document.getElementById("turn-btn").addEventListener("click", () => itemAction("toggle_turn"));
+document.getElementById("rotate-btn")?.addEventListener("click", () => itemAction("rotate"));
+document.getElementById("turn-btn")?.addEventListener("click", () => itemAction("toggle_turn"));
 
 // editor palette + wiring
 const editorBox = document.getElementById("editor");
@@ -633,7 +635,7 @@ eraseButton.addEventListener("click", () =>
 );
 paletteBox.appendChild(eraseButton);
 
-document.getElementById("edit-btn").addEventListener("click", () => {
+document.getElementById("edit-btn")?.addEventListener("click", () => {
   if (editing) {
     endEdit();
   } else {

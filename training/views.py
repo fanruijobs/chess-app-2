@@ -301,6 +301,10 @@ def item_action(request, pk, item_pk):
     except json.JSONDecodeError:
         return JsonResponse({"error": "bad JSON"}, status=400)
     action = data.get("action")
+    if action in {"rotate", "toggle_turn", "set_fen"} and not request.user.is_superuser:
+        return JsonResponse(
+            {"error": "Only an administrator can change positions."}, status=403
+        )
     try:
         if action == "rotate":
             item.fen = rotate_position_180(item.fen)

@@ -1,0 +1,85 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Trust the deployment host
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync source to the server
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          rsync -az --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.venv/' \
+            --exclude='.venv313/' \
+            --exclude='__pycache__/' \
+            --exclude='*.pyc' \
+            --exclude='.pytest_cache/' \
+            --exclude='.coverage' \
+            --exclude='db.sqlite3' \
+            --exclude='.env' \
+            --exclude='media/' \
+            --exclude='uploaded-books/' \
+            --exclude='staticfiles/' \
+            --exclude='tmp/' \
+            --exclude='chessdata-fixture.json' \
+            ./ "$EC2_USER@$EC2_HOST:/home/ubuntu/chess-app/"
+
+      - name: Migrate, collect static, restart and health-check
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh "$EC2_USER@$EC2_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /home/ubuntu/chess-app
+          .venv/bin/pip install -r requirements-deploy.txt
+          DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py check
+          DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py migrate --noinput
+          DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py collectstatic --noinput
+          sudo systemctl restart chess-app
+          sudo systemctl is-active --quiet chess-app
+          curl -fsS http://127.0.0.1:8888/accounts/login/ > /dev/null
+          echo "Deployment healthy"
+          REMOTE

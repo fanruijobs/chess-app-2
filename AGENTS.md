@@ -195,6 +195,10 @@ First OCR call per process pays a ~2 minute torch model-load warmup.
 - **Pagination:** the book puzzle list is 30/page (`?p=N`); the training-set
   list is 50/page (`?p=N`). The training-set page's clone dropdown must list
   **all** the user's sets, not just the current page.
+- **Position editing is superuser-only.** The training session's "Fix
+  orientation", "Switch side to move", and "Edit position" controls, and the
+  puzzle page's rotate / switch-turn forms, are hidden from normal users and
+  their POST endpoints return 403/redirect. Do not expose them to players.
 - **Django `JSONField` mutation is not tracked** when edited in place. Reassign
   the whole dict/list before saving.
 - **python-chess 1.11 gotchas:** use `Score.score()` / `Score.mate()` methods
@@ -229,11 +233,17 @@ First OCR call per process pays a ~2 minute torch model-load warmup.
 - View tests use Django's test client and assert status codes plus rendered
   context/content. Add a test for every behavior change, especially
   permission/ownership and pagination cases.
+- Browser E2E tests live in `tests/e2e/` and are marked `e2e`. They are outside
+  `testpaths`, so the default `pytest` run does not collect them; run
+  `pytest tests/e2e -m e2e` after installing `requirements-e2e.txt`.
 - Avoid tests that need network access, OCR models, or a real engine unless
   marked `integration`.
 - Fixtures: `training/tests/conftest.py` creates a non-superuser owner on
   purpose; don't switch it to a superuser or ownership tests stop covering the
   rule.
+- CI is defined in `.github/workflows/ci.yml`; deployment is in
+  `.github/workflows/deploy.yml`. See `.github/workflows/README.md` for the
+  required `EC2_*` secrets and server prerequisites.
 
 ## Production notes
 

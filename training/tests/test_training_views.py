@@ -251,17 +251,49 @@ def test_item_session_renders_board(client, book_set):
     assert "item-fen" in content
     assert "Re-analyze" in content
     assert "Flip board" in content
-    assert "Fix orientation" in content
-    assert "Switch side to move" in content
+    # position-editing controls are admin-only
+    assert "Fix orientation" not in content
+    assert "Switch side to move" not in content
+    assert "Edit position" not in content
     assert "analysis-switch" in content
     assert "Open in Chess.com" in content
     assert "Re-work" in content
 
 
-def test_item_action_rotate_saves(client, book_set):
+def test_item_session_shows_edit_buttons_for_superuser(admin_client, book_set):
+    item = book_set.items.first()
+    response = admin_client.get(f"/train-sets/{book_set.pk}/items/{item.pk}/")
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert "Fix orientation" in content
+    assert "Switch side to move" in content
+    assert "Edit position" in content
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        {"action": "rotate"},
+        {"action": "toggle_turn"},
+        {"action": "set_fen", "fen": "4k3/8/8/8/8/8/8/4K3 w - - 0 1"},
+    ),
+)
+def test_item_action_edit_actions_forbidden_for_non_superuser(client, book_set, payload):
+    item = book_set.items.first()
+    response = client.post(
+        f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
+    item.refresh_from_db()
+    assert item.fen == FEN
+
+
+def test_item_action_rotate_saves(admin_client, book_set):
     item = book_set.items.first()
     original = item.fen
-    response = client.post(
+    response = admin_client.post(
         f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
         data=json.dumps({"action": "rotate"}),
         content_type="application/json",
@@ -273,7 +305,7 @@ def test_item_action_rotate_saves(client, book_set):
     assert item.fen == fen  # saved to the DB
     # self-inverse: rotating again returns the original placement
     # (castling rights are dropped by the first rotation)
-    response = client.post(
+    response = admin_client.post(
         f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
         data=json.dumps({"action": "rotate"}),
         content_type="application/json",
@@ -283,10 +315,10 @@ def test_item_action_rotate_saves(client, book_set):
     assert rotate_position_180(rotate_position_180(original)) == response.json()["fen"]
 
 
-def test_item_action_toggle_turn_saves(client, book_set):
+def test_item_action_toggle_turn_saves(admin_client, book_set):
     item = book_set.items.first()
     assert " w " in item.fen
-    response = client.post(
+    response = admin_client.post(
         f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
         data=json.dumps({"action": "toggle_turn"}),
         content_type="application/json",
@@ -408,10 +440,10 @@ def test_clone_set_unknown_source(client):
     assert TrainingSet.objects.count() == 0
 
 
-def test_item_action_set_fen_updates_item_and_puzzle(client, book_set):
+def test_item_action_set_fen_updates_item_and_puzzle(admin_client, book_set):
     item = book_set.items.first()
     new_fen = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"
-    response = client.post(
+    response = admin_client.post(
         f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
         data=json.dumps({"action": "set_fen", "fen": new_fen}),
         content_type="application/json",
@@ -424,12 +456,12 @@ def test_item_action_set_fen_updates_item_and_puzzle(client, book_set):
     assert item.puzzle.piece_cells == []
 
 
-def test_item_action_set_fen_accepts_kingless_fen(client, book_set):
+def test_item_action_set_fen_accepts_kingless_fen(admin_client, book_set):
     # ill-scanned OCR positions (e.g. missing a king) must be saveable so
     # the user can repair them in the editor
     item = book_set.items.first()
     kingless = "8/8/8/8/8/8/8/K7 w - - 0 1"
-    response = client.post(
+    response = admin_client.post(
         f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
         data=json.dumps({"action": "set_fen", "fen": kingless}),
         content_type="application/json",
@@ -439,9 +471,9 @@ def test_item_action_set_fen_accepts_kingless_fen(client, book_set):
     assert item.fen == kingless
 
 
-def test_item_action_set_fen_rejects_bad_fen(client, book_set):
+def test_item_action_set_fen_rejects_bad_fen(admin_client, book_set):
     item = book_set.items.first()
-    response = client.post(
+    response = admin_client.post(
         f"/train-sets/{book_set.pk}/items/{item.pk}/action/",
         data=json.dumps({"action": "set_fen", "fen": "not-a-fen"}),
         content_type="application/json",

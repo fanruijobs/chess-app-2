@@ -361,6 +361,11 @@ def puzzle_view(request, pk):
     puzzle = get_object_or_404(Puzzle.objects.select_related("book", "page"), pk=pk)
 
     if request.method == "POST":
+        if not request.user.is_superuser:
+            messages.error(
+                request, "Only an administrator can change the stored position."
+            )
+            return redirect("books:puzzle_view", pk=pk)
         action = request.POST.get("action")
         if action == "rotate":
             try:
