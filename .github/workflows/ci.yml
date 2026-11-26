@@ -16,7 +16,7 @@ concurrency:
 jobs:
   unit:
     name: Unit tests (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -49,9 +49,30 @@ jobs:
 
       - name: Unit tests
         run: |
+          set -o pipefail
           pytest \
             --cov=chessdata --cov=analysis --cov=books --cov=training \
-            --cov-report=term-missing --cov-report=xml
+            --cov-report=term-missing --cov-report=xml 2>&1 | tee pytest.log
+
+      - name: Report pytest failures
+        if: failure()
+        run: |
+          if [ ! -f pytest.log ]; then
+            echo "::error title=Pytest::pytest.log was not created"
+            exit 0
+          fi
+          if grep -qE '^(FAILED|ERROR) ' pytest.log; then
+            grep -E '^(FAILED|ERROR) ' pytest.log | while IFS= read -r line; do
+              echo "::error title=Pytest failure::${line:0:900}"
+            done
+          else
+            tail -n 10 pytest.log | while IFS= read -r line; do
+              echo "::error title=Pytest output::${line:0:900}"
+            done
+          fi
+          echo "::group::Last 40 lines of pytest log"
+          tail -n 40 pytest.log
+          echo "::endgroup::"
 
       - name: Upload coverage
         if: matrix.python-version == '3.14'
@@ -62,7 +83,7 @@ jobs:
 
   integration:
     name: Engine integration tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -95,7 +116,7 @@ jobs:
 
   e2e:
     name: Browser end-to-end tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
