@@ -74,7 +74,15 @@ jobs:
           ssh "$EC2_USER@$EC2_HOST" 'bash -s' <<'REMOTE'
           set -euo pipefail
           cd /home/ubuntu/chess-app
+          echo "Disk before dependency install:"
+          df -h /
+          .venv/bin/pip cache purge || true
+          sudo -n apt-get clean 2>/dev/null || true
+          sudo -n journalctl --vacuum-size=100M 2>/dev/null || true
           .venv/bin/pip install -r requirements-deploy.txt
+          .venv/bin/pip cache purge || true
+          echo "Disk after dependency install:"
+          df -h /
           DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py check
           DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py migrate --noinput
           DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py collectstatic --noinput

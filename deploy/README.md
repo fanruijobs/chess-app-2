@@ -120,3 +120,22 @@ that are not present — page images will 404 in the books app. Everything else
 ```bash
 rsync -avz --progress -e "ssh -i ~/Downloads/r-ec2.pem" media/ ubuntu@3.107.245.75:/home/ubuntu/chess-app/media/
 ```
+
+## Disk maintenance
+
+The instance has a **6.8 GB root volume**, which is tight. A full disk causes
+Postgres to panic (`No space left on device`) and the app to return 500s. The
+deploy workflow purges the pip cache after installing dependencies. The server
+also has a weekly cleanup job at `/etc/cron.weekly/chess-app-cleanup` that runs
+`apt-get clean`, vacuums the journal to 100 MB, and removes
+`/home/ubuntu/.cache/pip`.
+
+Check space with:
+
+```bash
+ssh -i ~/Downloads/r-ec2.pem ubuntu@3.107.245.75 "df -h /; sudo du -x -h -d1 / | sort -h | tail"
+```
+
+For a permanent fix, grow the EBS root volume (e.g. 20 GB) and extend the
+filesystem; the current 6.8 GB volume will keep needing cleanup.
+
