@@ -95,11 +95,16 @@ def test_enrich_tp_idempotent(tp):
 def test_enrich_tp_failure_marks_failed(tp, monkeypatch):
     monkeypatch.setattr("analysis.llm.time.sleep", lambda s: None)
 
+    class DummyRequest:
+        # Newer openai versions inspect request.headers while constructing an
+        # APIConnectionError. A real request object is unnecessary here.
+        headers = {}
+
     class FakeClientError(FakeClient):
         def create(self, **kwargs):
             self.calls += 1
             raise openai.APIConnectionError(
-                message="connection failed", request=None
+                message="connection failed", request=DummyRequest()
             )
 
     client = FakeClientError()
