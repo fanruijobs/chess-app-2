@@ -24,7 +24,7 @@ export function Layout() {
           <a href="/books/">Books</a>
           <a href="/review/">Review</a>
           <a href="/bad-fens/">Bad FENs</a>
-          <a href="/rework/">Re-work</a>
+          <Link to="/rework">Re-work</Link>
           <a href="/train-sets/">Legacy training</a>
         </nav>
         <div className="nav-user">

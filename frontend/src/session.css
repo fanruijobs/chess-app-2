@@ -1,0 +1,108 @@
+/* Training session board and surrounding controls. */
+
+.training-board.cg-wrap {
+  width: min(480px, 92vw);
+  height: min(480px, 92vw);
+  margin: 0 auto 6px;
+}
+
+.training-board.cg-wrap cg-board {
+  background-color: #ebecd0;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOng9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiCiAgICAgdmlld0JveD0iMCAwIDggOCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPGcgaWQ9ImEiPgogIDxnIGlkPSJiIj4KICAgIDxnIGlkPSJjIj4KICAgICAgPGcgaWQ9ImQiPgogICAgICAgIDxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGlkPSJlIiBvcGFjaXR5PSIwIi8+CiAgICAgICAgPHVzZSB4PSIxIiB5PSIxIiBocmVmPSIjZSIgeDpocmVmPSIjZSIvPgogICAgICAgIDxyZWN0IHk9IjEiIHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGlkPSJmIiBmaWxsPSIjNzM5NTUyIi8+CiAgICAgICAgPHVzZSB4PSIxIiB5PSItMSIgaHJlZj0iI2YiIHg6aHJlZj0iI2YiLz4KICAgICAgPC9nPgogICAgICA8dXNlIHg9IjIiIGhyZWY9IiNkIiB4OmhyZWY9IiNkIi8+CiAgICA8L2c+CiAgICA8dXNlIHg9IjQiIGhyZWY9IiNjIiB4OmhyZWY9IiNjIi8+CiAgPC9nPgogIDx1c2UgeT0iMiIgaHJlZj0iI2IiIHg6aHJlZj0iI2IiLz4KPC9nPgo8dXNlIHk9IjQiIGhyZWY9IiNhIiB4OmhyZWY9IiNhIi8+Cjwvc3ZnPg==');
+}
+
+.training-board.cg-wrap coords {
+  font-size: 10px;
+  font-weight: 600;
+}
+.training-board.cg-wrap coords.ranks {
+  top: 0;
+}
+.training-board.cg-wrap coords.files {
+  bottom: 0;
+}
+.training-board.cg-wrap .orientation-white .ranks :nth-child(odd),
+.training-board.cg-wrap .orientation-white .files :nth-child(even),
+.training-board.cg-wrap .orientation-black .ranks :nth-child(even),
+.training-board.cg-wrap .orientation-black .files :nth-child(odd),
+.training-board.cg-wrap coords.squares:nth-of-type(odd) :nth-child(even),
+.training-board.cg-wrap coords.squares:nth-of-type(even) :nth-child(odd) {
+  color: #26221c;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.training-board.cg-wrap .orientation-white .ranks :nth-child(even),
+.training-board.cg-wrap .orientation-white .files :nth-child(odd),
+.training-board.cg-wrap .orientation-black .ranks :nth-child(odd),
+.training-board.cg-wrap .orientation-black .files :nth-child(even),
+.training-board.cg-wrap coords.squares:nth-of-type(odd) :nth-child(odd),
+.training-board.cg-wrap coords.squares:nth-of-type(even) :nth-child(even) {
+  color: #fdf6e3;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+#palette button {
+  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  margin: 2px;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#palette button.armed {
+  outline: 2px solid #208530;
+}
+#palette button.erase {
+  color: #b33;
+}
+
+.trainer-status {
+  font-size: 15px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 10px 0;
+}
+.trainer-status.saved {
+  background: #e7f6e7;
+  color: #0b5d0b;
+  border: 1px solid #bfe5bf;
+}
+.trainer-status.wrong {
+  background: #fbe9e9;
+  color: #8f1d1d;
+  border: 1px solid #f2c4c4;
+}
+
+.analysis-switch.on {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.turn-indicator {
+  font-weight: 600;
+}
+.turn-indicator .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+  border: 1px solid #26221c;
+  vertical-align: middle;
+}
+.turn-indicator .dot.white {
+  background: #fff;
+}
+.turn-indicator .dot.black {
+  background: #26221c;
+}
+
+.editor-box {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+  background: var(--card);
+}

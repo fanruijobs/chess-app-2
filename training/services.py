@@ -1,6 +1,7 @@
 """Training-set construction and marking. No solution lines are stored —
 analysis happens in the browser (Stockfish WASM) and the user is the judge."""
 
+import chess
 from django.db import transaction
 from django.db.models import Max
 from django.db.models.functions import Cast
@@ -224,3 +225,34 @@ def next_item(training_set: TrainingSet,
               status: str = TrainingSetItem.Status.PENDING) -> TrainingSetItem | None:
     """First item of the given category (pending / rework / passed)."""
     return training_set.items.filter(status=status).first()
+
+
+def apply_item_action(item: TrainingSetItem, action: str, fen: str | None = None):
+    """Apply an admin-only position repair to an item.
+
+    `rotate` and `toggle_turn` update the item snapshot; `set_fen` also
+    repairs the source puzzle. Raises ValueError for bad action/FEN.
+    """
+    if action == "rotate":
+        from books.views import rotate_position_180
+
+        item.fen = rotate_position_180(item.fen)
+    elif action == "toggle_turn":
+        board = chess.Board(item.fen)
+        board.turn = not board.turn
+        item.fen = board.fen()
+    elif action == "set_fen":
+        new_fen = (fen or "").strip()
+        # structural validation only — kingless OCR positions are
+        # allowed through so the user can repair them in the editor
+        chess.Board(new_fen)
+        item.fen = new_fen
+        if item.puzzle is not None:
+            puzzle = item.puzzle
+            puzzle.fen = new_fen
+            puzzle.piece_cells = []  # derived from the old FEN
+            puzzle.save(update_fields=["fen", "piece_cells", "updated_at"])
+    else:
+        raise ValueError("bad action")
+    item.save(update_fields=["fen"])
+    return item

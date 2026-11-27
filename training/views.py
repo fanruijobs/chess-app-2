@@ -5,7 +5,6 @@ import io
 import json
 import logging
 
-import chess
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -16,12 +15,12 @@ from django.utils.text import slugify
 
 from analysis.models import TurningPoint
 from books.models import Book
-from books.views import rotate_position_180
 from chessdata.models import Player
 from training.models import TrainingAttempt, TrainingSet, TrainingSetItem
 from training.pdf import render_set_pdf
 from training.services import (
     add_entries,
+    apply_item_action,
     clone_set,
     create_set,
     mark_all,
@@ -306,28 +305,9 @@ def item_action(request, pk, item_pk):
             {"error": "Only an administrator can change positions."}, status=403
         )
     try:
-        if action == "rotate":
-            item.fen = rotate_position_180(item.fen)
-        elif action == "toggle_turn":
-            board = chess.Board(item.fen)
-            board.turn = not board.turn
-            item.fen = board.fen()
-        elif action == "set_fen":
-            fen = (data.get("fen") or "").strip()
-            # structural validation only — kingless OCR positions are
-            # allowed through so the user can repair them in the editor
-            chess.Board(fen)
-            item.fen = fen
-            if item.puzzle is not None:
-                puzzle = item.puzzle
-                puzzle.fen = fen
-                puzzle.piece_cells = []  # derived from the old FEN
-                puzzle.save(update_fields=["fen", "piece_cells", "updated_at"])
-        else:
-            return JsonResponse({"error": "bad action"}, status=400)
+        apply_item_action(item, action, data.get("fen"))
     except ValueError:
         return JsonResponse({"error": "invalid FEN"}, status=400)
-    item.save(update_fields=["fen"])
     return JsonResponse({"ok": True, "fen": item.fen})
 
 

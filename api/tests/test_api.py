@@ -53,6 +53,14 @@ def api_client(user):
     return client
 
 
+@pytest.fixture
+def admin_client(user):
+    admin = User.objects.create_superuser("root", "root@example.com", "pw")
+    client = APIClient()
+    client.force_login(admin)
+    return client
+
+
 def test_api_requires_authentication():
     response = APIClient().get("/api/train-sets/")
     assert response.status_code in (401, 403)
@@ -135,3 +143,136 @@ def test_superuser_sees_all_sets(user, other_user):
     client.force_login(admin)
     response = client.get("/api/train-sets/")
     assert {row["name"] for row in response.json()["results"]} == {"Mine", "Theirs"}
+
+
+def test_create_set_from_book(api_client, user, book, training_set):
+    response = api_client.post(
+        "/api/train-sets/",
+        {
+            "name": "Created via API",
+            "entries": [
+                {
+                    "source_type": "book",
+                    "book_slug": book.slug,
+                    "pages_from": 16,
+                }
+            ],
+        },
+        format="json",
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Created via API"
+    assert data["total"] == 3
+    assert TrainingSet.objects.get(name="Created via API").owner == user
+
+
+def test_create_set_requires_a_source(api_client):
+    response = api_client.post(
+        "/api/train-sets/", {"name": "Empty", "entries": []}, format="json"
+    )
+    assert response.status_code == 400
+
+
+def test_clone_set(api_client, training_set):
+    response = api_client.post(
+        "/api/train-sets/clone/",
+        {"source_id": training_set.pk, "name": "Cloned"},
+        format="json",
+    )
+    assert response.status_code == 201
+    clone = TrainingSet.objects.get(name="Cloned")
+    assert clone.items.count() == training_set.items.count()
+    assert clone.owner == training_set.owner
+
+
+def test_add_items_to_set(api_client, training_set, book):
+    response = api_client.post(
+        f"/api/train-sets/{training_set.pk}/items/",
+        {
+            "entries": [
+                {
+                    "source_type": "book",
+                    "book_slug": book.slug,
+                    "pages_from": 16,
+                }
+            ]
+        },
+        format="json",
+    )
+    assert response.status_code == 201
+    assert response.json()["added"] == 3
+    assert training_set.items.count() == 6
+
+
+def test_mark_all_in_category(api_client, training_set):
+    response = api_client.post(
+        f"/api/train-sets/{training_set.pk}/mark-all/",
+        {"result": "passed", "status": "pending"},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.json()["marked"] == 3
+    assert training_set.items.filter(status="passed").count() == 3
+
+
+def test_item_detail_and_mark(api_client, training_set):
+    items = list(training_set.items.order_by("order", "id"))
+    response = api_client.get(
+        f"/api/train-sets/{training_set.pk}/items/{items[0].pk}/"
+    )
+    assert response.status_code == 200
+    assert response.json()["item"]["label"] == "1"
+
+    response = api_client.post(
+        f"/api/train-sets/{training_set.pk}/items/{items[0].pk}/mark/",
+        {"result": "rework", "status": "pending"},
+        format="json",
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["item_status"] == "rework"
+    assert data["attempts"] == 1
+    assert data["next_item_id"] == items[1].pk
+
+
+def test_item_action_is_admin_only(api_client, admin_client, training_set):
+    item = training_set.items.first()
+    original = item.fen
+    response = api_client.post(
+        f"/api/train-sets/{training_set.pk}/items/{item.pk}/action/",
+        {"action": "rotate"},
+        format="json",
+    )
+    assert response.status_code == 403
+    item.refresh_from_db()
+    assert item.fen == original
+
+    response = admin_client.post(
+        f"/api/train-sets/{training_set.pk}/items/{item.pk}/action/",
+        {"action": "rotate"},
+        format="json",
+    )
+    assert response.status_code == 200
+    item.refresh_from_db()
+    assert item.fen != original
+
+
+def test_rework_list_is_scoped(api_client, training_set):
+    item = training_set.items.first()
+    item.status = "rework"
+    item.save(update_fields=["status"])
+    response = api_client.get("/api/rework/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["results"][0]["set_id"] == training_set.pk
+
+
+def test_training_options(api_client, training_set, book):
+    response = api_client.get("/api/train-sets/options/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["books"] == [{"slug": book.slug, "title": book.title}]
+    assert data["sets"][0]["id"] == training_set.pk
+    assert "classifications" in data

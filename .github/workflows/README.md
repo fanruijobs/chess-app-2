@@ -54,7 +54,11 @@ finished binding the socket; checking immediately can produce a transient nginx
 
 ## React frontend
 
-The React slice lives in `frontend/` and is served at `/app/`:
+The React training app lives in `frontend/` and is served at `/app/`:
+- set creation/cloning, list/detail, add positions, mark-all
+- Re-work page and the interactive training session
+- Chessground + chess.js + Stockfish WASM; the engine fallback is served from
+  Django `/static/books/vendor/stockfish.js`
 
 ```bash
 cd frontend

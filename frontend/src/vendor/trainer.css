@@ -1,0 +1,159 @@
+/* Puzzle books: review editor + trainer (extends the analysis stylesheet) */
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(420px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) { .review-layout { grid-template-columns: 1fr; } }
+
+.crop-pane img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.edit-pane .palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.piece-button {
+  min-width: 40px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  font-weight: 700;
+}
+.piece-button.active {
+  border-color: var(--blue);
+  background: #e8f1fb;
+}
+
+.edit-pane .cg-wrap { margin-bottom: 6px; }
+
+/* explicit board sizing so chessground always has a measurable container */
+.cg-wrap { width: 100%; max-width: 560px; }
+.trainer-layout .cg-wrap, .review-layout .cg-wrap { margin: 0 auto 6px; }
+
+/* server-rendered inline SVG boards */
+.board-svg { max-width: 560px; }
+.board-svg svg { width: 100%; height: auto; display: block; }
+
+/* the puzzle's book number, displayed prominently on top */
+.puzzle-number-banner {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.trainer-layout {
+  display: grid;
+  grid-template-columns: minmax(380px, 1fr) minmax(280px, 0.6fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) { .trainer-layout { grid-template-columns: 1fr; } }
+
+.trainer-status {
+  font-size: 15px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 10px 0;
+}
+.trainer-status.solved { background: #e7f6e7; color: #0b5d0b; border: 1px solid #bfe5bf; }
+.trainer-status.wrong { background: #fbe9e9; color: #8f1d1d; border: 1px solid #f2c4c4; }
+
+a.button,
+button.button {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-form {
+  display: inline-block;
+  margin-right: 18px;
+}
+.nav-form input {
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.source-entry {
+  margin-bottom: 10px;
+}
+button.remove-source {
+  border: 1px solid #d0a0a0;
+  background: #fff;
+  color: #b33;
+  border-radius: 4px;
+  padding: 3px 9px;
+  margin-left: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+button.remove-source:hover { background: #fbe9e9; }
+
+/* Promotion picker (books/promotion.js): a column of board-square-sized
+   choices anchored on the promotion square, so each icon is exactly the
+   size of a piece on the board. */
+.promotion-picker.cg-wrap {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: var(--promo-square);
+  max-width: none;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.promotion-choice {
+  box-sizing: border-box;
+  display: block;
+  width: var(--promo-square);
+  height: var(--promo-square);
+  padding: 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+}
+.promotion-choice + .promotion-choice {
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+.promotion-choice:hover,
+.promotion-choice:focus-visible {
+  background: #d9e8c4;
+  outline: 2px solid #208530;
+  outline-offset: -2px;
+}
+.promotion-choice:active { background: #c8ddab; }
+/* chessground positions pieces absolutely on a board; in the picker they
+   are plain icons that fill the square. */
+.promotion-picker.cg-wrap piece {
+  position: static;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}

@@ -8,6 +8,9 @@
   --green-dark: #52713a;
   --ivory: #ebecd0;
   --red: #b33;
+  --surface: #fff;
+  --hairline: #d9d4c7;
+  --blue: #2f6fb3;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--paper);
@@ -196,6 +199,113 @@ input {
 input:focus {
   outline: 2px solid var(--green);
   outline-offset: 1px;
+}
+
+select {
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: #fff;
+}
+
+.form-card {
+  margin: 1rem 0 1.5rem;
+}
+
+.form-card h2:first-child {
+  margin-top: 0;
+}
+
+.form-card form {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-card form:last-child {
+  margin-bottom: 0;
+}
+
+.source-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.source-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  flex: 1;
+}
+
+.source-fields label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.inline-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.inline-inputs input {
+  min-width: 0;
+  width: 7rem;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.filter-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.button.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.note {
+  background: #e7f6e7;
+  color: #0b5d0b;
+  border: 1px solid #bfe5bf;
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.lines {
+  margin: 1rem 0;
+}
+
+.lines .hint {
+  margin: 0.35rem 0;
 }
 
 table {

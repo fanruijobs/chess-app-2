@@ -46,10 +46,43 @@ class TrainingSetItemSerializer(serializers.ModelSerializer):
             "id",
             "label",
             "fen",
+            "san_best",
             "status",
             "attempts",
             "order",
+            "last_trained_at",
             "puzzle_id",
             "turning_point_id",
         )
         read_only_fields = fields
+
+
+class ReworkItemSerializer(serializers.ModelSerializer):
+    set_id = serializers.IntegerField(source="training_set_id", read_only=True)
+    set_name = serializers.CharField(source="training_set.name", read_only=True)
+    book_title = serializers.SerializerMethodField()
+    book_slug = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrainingSetItem
+        fields = (
+            "id",
+            "label",
+            "status",
+            "attempts",
+            "san_best",
+            "last_trained_at",
+            "set_id",
+            "set_name",
+            "book_title",
+            "book_slug",
+            "puzzle_id",
+            "turning_point_id",
+        )
+        read_only_fields = fields
+
+    def get_book_title(self, obj) -> str | None:
+        return obj.puzzle.book.title if obj.puzzle is not None else None
+
+    def get_book_slug(self, obj) -> str | None:
+        return obj.puzzle.book.slug if obj.puzzle is not None else None

@@ -38,10 +38,10 @@ There is no npm/build pipeline.
   `media/`, `uploaded-books/`, `staticfiles/`, `tmp/`, `*.log`, exported PDFs.
 - **Keep the legacy Django UI server-rendered.** Normal pages use templates,
   form POSTs + `{% csrf_token %}`, redirect-after-POST, and the messages
-  framework. The `/app/` React slice (login, training-set list/detail) is the
-  deliberate exception; the training session and analysis board remain the
-  existing interactive JS pages. Do not add more client-side JavaScript outside
-  `frontend/` without explicit approval.
+  framework. The `/app/` React training app is the deliberate exception; it
+  covers set creation/cloning, set detail, Re-work, and the training session.
+  Do not add more client-side JavaScript outside `frontend/` without explicit
+  approval.
 - **Scope every training-set access through `sets_for()` / `set_for()`**
   (`training/services.py`). A set is visible only to its owner; superusers see
   all. Never query `TrainingSet.objects` directly in a view/endpoint.
@@ -111,8 +111,8 @@ to module top level. PDF export/tests still need GTK/Pango installed.
 | `analysis/` | `AnalysisJob`, `AnalysisRun`, `TurningPoint`, `WorkerHeartbeat`; Stockfish engine, classifiers, queue/worker, LLM, PDFs |
 | `books/` | `Book`, `PageImage`, `CalibrationProfile`, `Puzzle`; CV pipeline (`cv/`), OCR bridge (`ocr.py`), import/verify/export commands |
 | `training/` | `TrainingSet`, `TrainingSetItem`, `TrainingAttempt`; set construction, session/mark views, PDF export |
-| `api/` | Django REST Framework JSON API consumed by the React app (`/api/`) |
-| `frontend/` | Vite + React + TypeScript slice served at `/app/` |
+| `api/` | Django REST Framework JSON API consumed by the React training app (`/api/`) |
+| `frontend/` | Vite + React + TypeScript training app served at `/app/`; includes the Chessground/Stockfish session |
 | `deploy/` | systemd unit, nginx config, deployment runbook |
 | `scripts/` | Standalone OCR/AI-page-parse and CV debugging helpers |
 

@@ -112,13 +112,15 @@ Web "Queue" buttons enqueue jobs; the `analyze_worker` daemon processes them
 (a game takes ~1–2 minutes at depth 18). If the worker isn't running the pages
 tell you and nothing gets processed.
 
-### React slice (`/app/`)
+### React training app (`/app/`)
 
-An incremental React frontend (Vite + TypeScript) covers login, the paginated
-training-set list (50/page), and training-set detail. It calls the Django JSON
-API under `/api/`; the original server-rendered pages remain available at their
-existing routes, including the training session, PDF export, books/review, and
-game analysis. Item "Train" links from React open the existing Django session.
+The React frontend (Vite + TypeScript) now covers the **entire training
+domain**: login, set creation/cloning, the paginated training-set list, set
+detail with category filters and mark-all, adding positions, the Re-work page,
+and the interactive training session (Chessground + chess.js + Stockfish WASM).
+It calls the Django JSON API under `/api/`. PDF export remains a Django
+endpoint; the old Django training pages are still reachable from the “Legacy
+training” link for fallback/reference.
 
 Development uses two processes — Django on `:8888` and Vite on `:5173`, with
 `/api` proxied to Django:
@@ -134,14 +136,24 @@ npm run dev        # http://localhost:5173/app/
 ```
 
 Production builds are served at `/app/` by nginx; `frontend_dist/` is built in
-CI and is not committed. The API endpoints are:
+CI and is not committed. API endpoints:
 
 ```
 GET  /api/auth/csrf/       GET  /api/auth/me/
 POST /api/auth/login/      POST /api/auth/logout/
+
 GET  /api/train-sets/?page=N
+POST /api/train-sets/                         # create
+POST /api/train-sets/clone/                   # clone
+GET  /api/train-sets/options/                 # form options
 GET  /api/train-sets/<id>/
-GET  /api/train-sets/<id>/items/?page=N
+GET  /api/train-sets/<id>/items/?page=N&status=
+POST /api/train-sets/<id>/items/              # add positions
+POST /api/train-sets/<id>/mark-all/
+GET  /api/train-sets/<id>/items/<item>/
+POST /api/train-sets/<id>/items/<item>/mark/
+POST /api/train-sets/<id>/items/<item>/action/
+GET  /api/rework/?page=N&set=&book=
 ```
 
 ### Interactive boards (training session + analysis board)

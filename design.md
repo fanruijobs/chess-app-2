@@ -6,10 +6,10 @@ API, database, and UI design. For current project state and gotchas see
 ## 1. Architecture overview
 
 Single-user Django app, **SQLite**, server-rendered templates. The legacy UI is
-deliberately **no client-side JavaScript**; the incremental React slice at
-`/app/` (login, training-set list/detail) is the exception and talks to the
-Django REST API under `/api/`. The training session and analysis board use the
-existing browser chess components.
+deliberately **no client-side JavaScript**; the React training app at `/app/`
+(login, set creation/cloning, set detail, Re-work, session board) is the
+exception and talks to the Django REST API under `/api/`. The training session
+and analysis board use the existing browser chess components.
 
 Domains:
 
