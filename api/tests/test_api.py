@@ -186,6 +186,24 @@ def test_clone_set(api_client, training_set):
     assert clone.owner == training_set.owner
 
 
+def test_create_set_from_rework(api_client, training_set):
+    item = training_set.items.first()
+    item.status = "rework"
+    item.save(update_fields=["status"])
+    response = api_client.post(
+        "/api/train-sets/",
+        {
+            "name": "Rework copy",
+            "entries": [
+                {"source_type": "rework", "from_set": training_set.pk}
+            ],
+        },
+        format="json",
+    )
+    assert response.status_code == 201
+    assert response.json()["total"] == 1
+
+
 def test_add_items_to_set(api_client, training_set, book):
     response = api_client.post(
         f"/api/train-sets/{training_set.pk}/items/",

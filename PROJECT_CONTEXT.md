@@ -16,13 +16,17 @@ A personal, single-user Django web app with two halves:
 
 All pages require login at `/accounts/login/` (no signup; users are created in
 the Django admin). Training sets are per-user — each has one owner and is
-visible only to them; superusers see all. The frontend is deliberately
-**no-JS**: server-rendered templates, inline SVG boards, plain POST forms.
+visible only to them; superusers see all. The legacy UI is deliberately
+**no-JS**: server-rendered templates, inline SVG boards, plain POST forms. The
+training workflow is now a React app at `/app/` backed by the DRF API under
+`/api/` (set creation/cloning, detail, Re-work, interactive session); PDF and
+the other legacy pages stay server-rendered.
 
 ## 2. Stack / environment
 
 - Python **3.14** venv (`.venv`), SQLite dev DB (`db.sqlite3`)
-- Django, python-chess (PyPI `chess`, v1.11.2 — see gotchas §7), OpenCV, NumPy
+- Django + Django REST Framework, Node 22 + Vite/React/TypeScript for `/app/`
+- python-chess (PyPI `chess`, v1.11.2 — see gotchas §7), OpenCV, NumPy
 - WeasyPrint (PDF export; needs `brew install pango`), Stockfish (brew)
 - **OCR bridge**: [tsoj/Chess_diagram_to_FEN](https://github.com/tsoj/Chess_diagram_to_FEN)
   runs under a dedicated **`.venv313`** (its `pyfastnoiselite` dep has no 3.14

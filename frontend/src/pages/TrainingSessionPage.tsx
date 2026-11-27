@@ -171,7 +171,9 @@ export function TrainingSessionPage() {
   }
 
   function refreshDests() {
-    cgRef.current?.set({ movable: { dests: computeDests() } });
+    cgRef.current?.set({
+      movable: { free: false, color: "both", dests: computeDests() },
+    });
   }
 
   function syncEditBoard() {
