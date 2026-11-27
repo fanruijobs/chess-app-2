@@ -18,6 +18,11 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# React frontend
+frontend/node_modules/
+frontend/coverage/
+frontend_dist/
+
 # Local config
 .env
 .env.*

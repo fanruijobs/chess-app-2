@@ -112,6 +112,38 @@ Web "Queue" buttons enqueue jobs; the `analyze_worker` daemon processes them
 (a game takes ~1–2 minutes at depth 18). If the worker isn't running the pages
 tell you and nothing gets processed.
 
+### React slice (`/app/`)
+
+An incremental React frontend (Vite + TypeScript) covers login, the paginated
+training-set list (50/page), and training-set detail. It calls the Django JSON
+API under `/api/`; the original server-rendered pages remain available at their
+existing routes, including the training session, PDF export, books/review, and
+game analysis. Item "Train" links from React open the existing Django session.
+
+Development uses two processes — Django on `:8888` and Vite on `:5173`, with
+`/api` proxied to Django:
+
+```bash
+# terminal 1
+.venv/bin/python manage.py runserver 127.0.0.1:8888
+
+# terminal 2
+cd frontend
+npm ci
+npm run dev        # http://localhost:5173/app/
+```
+
+Production builds are served at `/app/` by nginx; `frontend_dist/` is built in
+CI and is not committed. The API endpoints are:
+
+```
+GET  /api/auth/csrf/       GET  /api/auth/me/
+POST /api/auth/login/      POST /api/auth/logout/
+GET  /api/train-sets/?page=N
+GET  /api/train-sets/<id>/
+GET  /api/train-sets/<id>/items/?page=N
+```
+
 ### Interactive boards (training session + analysis board)
 
 Both interactive boards use **Chessground** (vendored build) for rendering,
@@ -131,12 +163,19 @@ be a `Map`, and the `after` move callback lives under
 .venv/bin/python -m pytest                        # unit tests (fast; excludes integration + e2e)
 .venv/bin/python -m pytest -m integration         # real-Stockfish integration tests
 .venv/bin/python -m pytest -m ""                  # include integration tests (not e2e)
-.venv/bin/python -m pytest --cov=chessdata --cov=analysis --cov=books --cov=training --cov-report=term
+.venv/bin/python -m pytest --cov=chessdata --cov=analysis --cov=books --cov=training --cov=api --cov-report=term
 
 # browser end-to-end tests
 .venv/bin/pip install -r requirements-e2e.txt
 .venv/bin/python -m playwright install chromium
 .venv/bin/python -m pytest tests/e2e -m e2e
+
+# React frontend
+cd frontend
+npm ci
+npm run typecheck
+npm test
+npm run build
 ```
 
 App-code coverage is ~74% with the full unit suite (core logic: turning-point

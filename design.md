@@ -5,8 +5,13 @@ API, database, and UI design. For current project state and gotchas see
 
 ## 1. Architecture overview
 
-Single-user Django app, **SQLite**, server-rendered templates, **no client-side
-JavaScript**. Three bounded domains:
+Single-user Django app, **SQLite**, server-rendered templates. The legacy UI is
+deliberately **no client-side JavaScript**; the incremental React slice at
+`/app/` (login, training-set list/detail) is the exception and talks to the
+Django REST API under `/api/`. The training session and analysis board use the
+existing browser chess components.
+
+Domains:
 
 ```
 chessdata   chess.com sync: Player -> Game -> MoveEval
@@ -15,8 +20,10 @@ books       puzzle books: Book -> PageImage -> Puzzle
 training     training sets: TrainingSet -> TrainingSetItem -> TrainingAttempt
 ```
 
-All mutations are plain HTML form POSTs or JSON endpoints (training analyze/mark);
-all reads are GETs that re-render the page. `books/` additionally shells out
+Legacy mutations are plain HTML form POSTs or JSON endpoints (training
+session); reads are GETs that re-render the page. The React slice uses the
+same session auth and CSRF, with DRF endpoints under `/api/`.
+`books/` additionally shells out
 to a separate Python-3.13 venv for diagram OCR (see README).
 
 ## 2. API design

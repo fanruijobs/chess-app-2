@@ -48,6 +48,7 @@ urlpatterns = [
         name="password_change_done",
     ),
     path("", include("analysis.urls")),
+    path("api/", include("api.urls")),
     path("", include("books.urls")),
     path("", include("training.urls")),
 ]

@@ -4,8 +4,8 @@ Two GitHub Actions workflows live here:
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | push to `main`, pull requests, manual | unit tests on Python 3.12 + 3.14, real-Stockfish integration tests, Playwright browser E2E |
-| `deploy.yml` | CI succeeds on `main`, manual | rsync source to the EC2 box, install deps, migrate, collectstatic, restart `chess-app`, health-check |
+| `ci.yml` | push to `main`, pull requests, manual | unit tests on Python 3.12 + 3.14, real-Stockfish integration tests, Playwright browser E2E, frontend typecheck/unit tests/build |
+| `deploy.yml` | CI succeeds on `main`, manual | builds React, rsyncs source to EC2, installs deps, migrates, collectstatic, installs nginx config, restarts `chess-app`, health-checks Django + `/app/` |
 
 ## Required repository secrets
 
@@ -31,10 +31,12 @@ The deployment job assumes:
 - Secrets in `/home/ubuntu/chess-app/.env` (mode 600)
 - PostgreSQL running on `127.0.0.1:5432`
 - nginx listening on `:8888`, gunicorn on `127.0.0.1:8000`
+- nginx config installed at `/etc/nginx/sites-available/chess-app`; the deploy job updates it from `deploy/nginx-chess-app.conf` and reloads nginx
+- `frontend_dist/app/` served by nginx at `/app/`, API proxy at `/api/`
 - `rsync` and `curl` installed
-- Passwordless sudo for the restart, e.g.:
+- Passwordless sudo for the restart and nginx reload, e.g.:
   ```sudoers
-  ubuntu ALL=(root) NOPASSWD: /bin/systemctl restart chess-app, /bin/systemctl is-active chess-app
+  ubuntu ALL=(root) NOPASSWD: /bin/systemctl restart chess-app, /bin/systemctl is-active chess-app, /usr/sbin/nginx, /usr/bin/install
   ```
 - The EC2 security group allows SSH from GitHub-hosted runners. GitHub runner
   IPs are dynamic; either allow port 22 from the runner ranges (or `0.0.0.0/0`
@@ -44,10 +46,27 @@ The deploy job preserves the server-side `.env`, `media/`, `uploaded-books/`,
 `staticfiles/`, `tmp/`, and `chessdata-fixture.json` via excludes. Do not
 remove those excludes.
 
-After `systemctl restart`, the health check polls both gunicorn (`:8000`) and
-nginx (`:8888`) for up to 60 seconds. This matters because systemd reports the
-service as active before gunicorn has finished binding the socket; checking
-immediately can produce a transient nginx 502.
+After `systemctl restart`, the health check polls gunicorn (`:8000`), nginx
+(`:8888`), the API CSRF endpoint, and the React app for up to 60 seconds. This
+matters because systemd reports the service as active before gunicorn has
+finished binding the socket; checking immediately can produce a transient nginx
+502.
+
+## React frontend
+
+The React slice lives in `frontend/` and is served at `/app/`:
+
+```bash
+cd frontend
+npm ci
+npm run dev        # http://localhost:5173/app/ with /api proxied to Django :8888
+npm run typecheck
+npm test
+npm run build      # writes ../frontend_dist/app
+```
+
+The deploy workflow builds the frontend and rsyncs `frontend_dist/` to the
+server. `frontend/node_modules/` and `frontend_dist/` are not committed.
 
 ## Running tests locally
 

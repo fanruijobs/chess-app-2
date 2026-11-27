@@ -36,9 +36,12 @@ There is no npm/build pipeline.
   `manage.py flush`, `loaddata`, and database dumps over the live DB.
 - **Never commit secrets or large generated data**: `.env`, `db.sqlite3`,
   `media/`, `uploaded-books/`, `staticfiles/`, `tmp/`, `*.log`, exported PDFs.
-- **Keep the no-JS architecture.** Use Django templates, normal form POSTs +
-  `{% csrf_token %}`, redirect-after-POST, and the messages framework. The
-  training session and analysis board are the only interactive JS pages.
+- **Keep the legacy Django UI server-rendered.** Normal pages use templates,
+  form POSTs + `{% csrf_token %}`, redirect-after-POST, and the messages
+  framework. The `/app/` React slice (login, training-set list/detail) is the
+  deliberate exception; the training session and analysis board remain the
+  existing interactive JS pages. Do not add more client-side JavaScript outside
+  `frontend/` without explicit approval.
 - **Scope every training-set access through `sets_for()` / `set_for()`**
   (`training/services.py`). A set is visible only to its owner; superusers see
   all. Never query `TrainingSet.objects` directly in a view/endpoint.
@@ -108,6 +111,8 @@ to module top level. PDF export/tests still need GTK/Pango installed.
 | `analysis/` | `AnalysisJob`, `AnalysisRun`, `TurningPoint`, `WorkerHeartbeat`; Stockfish engine, classifiers, queue/worker, LLM, PDFs |
 | `books/` | `Book`, `PageImage`, `CalibrationProfile`, `Puzzle`; CV pipeline (`cv/`), OCR bridge (`ocr.py`), import/verify/export commands |
 | `training/` | `TrainingSet`, `TrainingSetItem`, `TrainingAttempt`; set construction, session/mark views, PDF export |
+| `api/` | Django REST Framework JSON API consumed by the React app (`/api/`) |
+| `frontend/` | Vite + React + TypeScript slice served at `/app/` |
 | `deploy/` | systemd unit, nginx config, deployment runbook |
 | `scripts/` | Standalone OCR/AI-page-parse and CV debugging helpers |
 
@@ -122,6 +127,10 @@ Key module pointers:
 - `books/services.py` — puzzle import/store/upsert logic.
 - `training/services.py` — `create_set`, `add_entries`, `clone_set`,
   `mark_item`, `mark_all`, `next_item`, `sets_for`, `set_for`.
+- `api/` — DRF serializers/views; all set endpoints go through `sets_for`.
+- `frontend/src/api/client.ts` — session-auth fetch wrapper with CSRF;
+  `frontend/src/pages/` — React pages; `frontend/vite.config.ts` — `/api`
+  dev proxy and `frontend_dist/app` build output.
 
 ## Commands
 
@@ -138,7 +147,18 @@ python manage.py collectstatic --noinput
 pytest                                   # fast suite; integration tests excluded
 pytest -m ""                             # include real-Stockfish integration tests
 pytest training/tests/ -q
-pytest --cov=chessdata --cov=analysis --cov-report=term
+pytest --cov=chessdata --cov=analysis --cov=books --cov=training --cov=api --cov-report=term
+```
+
+### React frontend
+
+```bash
+cd frontend
+npm ci
+npm run dev          # http://localhost:5173/app/, /api proxied to Django :8888
+npm run typecheck
+npm test
+npm run build        # writes ../frontend_dist/app
 ```
 
 `pytest.ini` sets `DJANGO_SETTINGS_MODULE=config.settings` and
@@ -236,6 +256,10 @@ First OCR call per process pays a ~2 minute torch model-load warmup.
 - Browser E2E tests live in `tests/e2e/` and are marked `e2e`. They are outside
   `testpaths`, so the default `pytest` run does not collect them; run
   `pytest tests/e2e -m e2e` after installing `requirements-e2e.txt`.
+- The API app is covered by `api/tests/`; keep new endpoints scoped through
+  `sets_for`/`set_for` and add authentication/ownership tests.
+- Frontend tests use Vitest + Testing Library (`frontend/src/**/*.test.tsx`).
+  The React app is typechecked and built in CI.
 - Avoid tests that need network access, OCR models, or a real engine unless
   marked `integration`.
 - Fixtures: `training/tests/conftest.py` creates a non-superuser owner on

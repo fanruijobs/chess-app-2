@@ -3,10 +3,12 @@
 Target: a single EC2 box (Ubuntu 24.04) at `3.107.245.75`, serving on **port 8888**.
 
 ```
-browser :8888 ──> nginx ──┬── /static/  → /home/ubuntu/chess-app/staticfiles/
-                          └── /         → gunicorn 127.0.0.1:8000 → Django
-                                                                    │
-Postgres 16 (127.0.0.1:5432, scram-sha-256, role+db `chessapp`) <───┘
+browser :8888 ──> nginx ──┬── /static/        → /home/ubuntu/chess-app/staticfiles/
+                          ├── /app/           → /home/ubuntu/chess-app/frontend_dist/app/
+                          ├── /api/           → gunicorn 127.0.0.1:8000 → Django API
+                          └── /               → gunicorn 127.0.0.1:8000 → Django
+                                                                         │
+Postgres 16 (127.0.0.1:5432, scram-sha-256, role+db `chessapp`) <────────┘
 ```
 
 ## Files here
@@ -44,6 +46,9 @@ Select it with `DJANGO_SETTINGS_MODULE=config.settings_deploy`.
 
 Secrets live in `/home/ubuntu/chess-app/.env` (mode 600, not in the repo).
 The deploy settings read `POSTGRES_PASSWORD` and friends from there.
+
+The React app is built in CI into `frontend_dist/app/` and served by nginx;
+no Node runtime is needed on the server.
 
 ## Redeploying
 

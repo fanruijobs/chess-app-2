@@ -31,6 +31,19 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
       - name: Load SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -64,6 +77,7 @@ jobs:
             --exclude='staticfiles/' \
             --exclude='tmp/' \
             --exclude='chessdata-fixture.json' \
+            --exclude='frontend/node_modules/' \
             ./ "$EC2_USER@$EC2_HOST:/home/ubuntu/chess-app/"
 
       - name: Migrate, collect static, restart and health-check
@@ -86,10 +100,14 @@ jobs:
           DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py check
           DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py migrate --noinput
           DJANGO_SETTINGS_MODULE=config.settings_deploy .venv/bin/python manage.py collectstatic --noinput
+          sudo install -m 0644 deploy/nginx-chess-app.conf /etc/nginx/sites-available/chess-app
+          sudo nginx -t
+          sudo systemctl reload nginx
           sudo systemctl restart chess-app
           sudo systemctl is-active --quiet chess-app
           for attempt in $(seq 1 60); do
-            if curl -fsS --max-time 5 http://127.0.0.1:8000/accounts/login/ >/dev/null 2>&1 \
+            if curl -fsS --max-time 5 http://127.0.0.1:8000/api/auth/csrf/ >/dev/null 2>&1 \
+               && curl -fsS --max-time 5 http://127.0.0.1:8888/app/ >/dev/null 2>&1 \
                && curl -fsS --max-time 5 http://127.0.0.1:8888/accounts/login/ >/dev/null 2>&1; then
               echo "Deployment healthy"
               exit 0

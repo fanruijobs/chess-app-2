@@ -43,6 +43,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
+# The React dev server runs on :5173 and proxies /api to Django.
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
+
 
 # Application definition
 
@@ -53,10 +59,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'chessdata',
     'analysis',
     'books',
     'training',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -148,6 +156,17 @@ MAILERS = {
 
 
 # App-specific settings
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
+}
 
 # All app views require login. The app has its own login page — the admin
 # login only accepts staff accounts, so it cannot be the shared entry point.
