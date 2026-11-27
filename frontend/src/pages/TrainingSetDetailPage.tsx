@@ -290,7 +290,9 @@ export function TrainingSetDetailPage() {
             <tbody>
               {items.results.map((item, index) => (
                 <tr key={item.id}>
-                  <td className="num">{page * PAGE_SIZE + index + 1}</td>
+                  <td className="num">
+                    {(page - 1) * PAGE_SIZE + index + 1}
+                  </td>
                   <td>
                     <Link
                       to={`/sets/${trainingSet.id}/items/${item.id}/${categoryQuery}`}

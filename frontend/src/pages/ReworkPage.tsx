@@ -133,7 +133,9 @@ export function ReworkPage() {
             <tbody>
               {data.results.map((item, index) => (
                 <tr key={`${item.set_id}-${item.id}`}>
-                  <td className="num">{index + 1}</td>
+                  <td className="num">
+                    {(page - 1) * PAGE_SIZE + index + 1}
+                  </td>
                   <td>
                     <Link to={`/sets/${item.set_id}`}>{item.set_name}</Link>
                   </td>
