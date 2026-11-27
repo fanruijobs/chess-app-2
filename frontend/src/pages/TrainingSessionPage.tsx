@@ -439,6 +439,13 @@ export function TrainingSessionPage() {
     setLoading(true);
     setError("");
     setMessage("");
+    // Every item visit starts with analysis off and no engine output.
+    setAnalysisOn(false);
+    analysisOnRef.current = false;
+    setLineState([]);
+    engineRef.current?.dispose();
+    engineRef.current = null;
+    cgRef.current?.setAutoShapes([]);
     getTrainingItem(setId, trainingItemId, category)
       .then((result) => {
         if (!cancelled) setData(result);
@@ -478,7 +485,6 @@ export function TrainingSessionPage() {
       events: { select: handleSelect },
     });
     cgRef.current = board;
-    if (analysisOnRef.current) scheduleAnalysis();
     return () => {
       engineRef.current?.dispose();
       engineRef.current = null;
